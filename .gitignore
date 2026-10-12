@@ -1,0 +1,14 @@
+.venv/
+.uv-cache/
+
+__pycache__/
+*.py[cod]
+.env
+.env.*
+!.env.example
+runs/
+roms/
+*.nes
+
+.local/*
+.local
