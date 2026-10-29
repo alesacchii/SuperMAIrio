@@ -10,7 +10,7 @@ from app.contracts import Decision, DecisionRequest, Observation
 class ModelController(Protocol):
     model_id: str
 
-    def build_request(self, observation: Observation, png: bytes, *, frames: int,
+    def build_request(self, observation: Observation, png: bytes | None, *, frames: int,
                       previous_move=None, previous_position=None, control_context=None) -> DecisionRequest: ...
 
     async def decide(self, payload: dict) -> Decision: ...

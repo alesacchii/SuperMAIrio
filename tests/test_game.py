@@ -127,6 +127,7 @@ class GameContractTests(unittest.TestCase):
         self.assertEqual({move.name for move in sequence[:len(DEMO_SEQUENCE) + len(DEMO_LOOP)]}, set(MOVES))
         self.assertEqual(sequence, [next(second) for _ in range(count)])
 
+    @patch.dict("app.config.os.environ", {"OPENROUTER_MODEL": Config().model})
     def test_configuration(self):
         self.assertEqual(parse_config([]), Config())
         for args in (["--mode", "manual", "--headless"], ["--episodes", "0"],

@@ -22,8 +22,8 @@ def distribution(values):
 class Metrics:
     def __init__(self):
         self.counts = Counter()
-        self.samples = {name: [] for name in ("request_seconds", "preparation_seconds",
-            "polling_seconds", "observation_age_seconds", "deferred_seconds",
+        self.samples = {name: [] for name in ("request_seconds", "preparation_seconds", "dispatch_seconds",
+            "polling_seconds", "observation_age_seconds", "observation_age_frames",
             "observation_to_first_frame_seconds", "observation_to_last_frame_seconds")}
         self.known_cost = 0.0
         self.cost_known_requests = 0
@@ -47,9 +47,11 @@ class Metrics:
 
     def summary(self, seconds):
         counts = {name: self.counts[name] for name in ("requests", "decisions", "moves", "continues",
-            "deferred_moves", "frames", "waiting_frames", "tail_frames", "jump_release_frames",
-            "stale_responses", "discarded_responses", "cancelled_requests", "retried_requests", "errors")}
+            "frames", "waiting_frames", "jump_release_frames", "airborne_frames", "execution_intervals",
+            "not_applicable_decisions", "stale_responses", "discarded_responses", "cancelled_requests",
+            "retried_requests", "errors")}
         return {**counts, "wall_seconds": seconds,
+            "requests_per_second": counts["requests"] / seconds if seconds > 0 else None,
             "decisions_per_second": counts["decisions"] / seconds if seconds > 0 else None,
             "moves_per_second": counts["moves"] / seconds if seconds > 0 else None,
             "effective_fps": counts["frames"] / seconds if seconds > 0 else None,

@@ -48,7 +48,7 @@ class DisplayTests(unittest.TestCase):
                  patch("app.models.load_model", return_value=client), \
                  patch("app.session.SessionLog", side_effect=factory), \
                  patch("app.viewer.GameWindow", Window), patch("sys.stdout", StringIO()):
-                run(Config(max_frames=60))
+                run(Config(max_frames=60, control_mode="moves"))
             summary = json.loads(next(Path(directory).glob("*/summary.json")).read_text())
             self.assertEqual(summary["status"], "stopped")
             self.assertEqual(summary["frames"], 2)

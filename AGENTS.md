@@ -40,7 +40,8 @@ Leggere poi i moduli e i test pertinenti alla richiesta, seguendo questa mappa.
 | --- | --- | --- |
 | Emulatore, frame, reset, azioni e osservazioni | `app/game.py`, `app/contracts.py` | `tests/test_game.py` |
 | Finestra, tastiera, focus, rendering e arresto | `app/viewer.py`, `app/runner.py` | `tests/test_viewer.py`, `tests/test_runner.py` |
-| Mosse, segmenti committed, atterraggio e rilascio di A | `app/moves.py`, `app/game.py` | `tests/test_moves.py`, `tests/test_game.py` |
+| Mosse, interruzioni e rilascio di A, stima dell'atterraggio | `app/moves.py`, `app/game.py` | `tests/test_moves.py`, `tests/test_game.py`, `tests/test_jump_replays.py` |
+| Pulsanti diretti e con durata (`buttons`, `timed`) | `app/control.py`, `app/models/_choice.py` | `tests/test_button_control.py`, `tests/test_timed_control.py` |
 | Scena dalla RAM: nemici, muri, buche, blocchi, power-up | `app/scene.py`, `app/game.py` | `tests/test_scene.py` |
 | Ciclo modello, realtime/paused, richiesta singola e risposte obsolete | `app/model_runner.py`, `app/moves.py`, `app/openrouter.py`, `app/config.py` | `tests/test_realtime.py`, `tests/test_decisions.py` |
 | Protocollo HTTP, validazione, timeout e worker asincrono | `app/openrouter.py`, `app/contracts.py` | `tests/test_decisions.py` |
@@ -93,16 +94,19 @@ suite standard controllare che il flag live non sia già attivo nell'ambiente.
 - `realtime` fa avanzare il gioco anche durante le richieste, alla velocità
   configurata (massimo 60 FPS), anche headless. `paused` ferma il gioco durante
   la decisione ed è una modalità di debug (a turni); distinguerla nei confronti.
-- Ciclo Chiamo → Decisione → Azione → Chiamo: al massimo una richiesta in corso.
-  Ogni decisione è una mossa completa oppure `continue`. In `realtime` la richiesta
-  successiva parte quando la decisione viene applicata, mentre la mossa prosegue;
-  in `paused` parte a fine mossa.
-- I segmenti committed (la parte con A dei salti) non vengono interrotti: una
-  mossa nuova attende, e un salto nuovo attende anche l'atterraggio
-  (`info["on_ground"]`, dalla RAM NES). L'esecutore rilascia A per un frame
-  prima di un salto che segue A premuto; a fine copione la direzione resta
-  premuta senza A. Le durate sono calibrate sull'emulatore: rimisurarle prima
-  di cambiarle.
+- Ciclo decisione → un frame eseguito → osservazione → richiesta, con al massimo
+  una richiesta in corso. Realtime prosegue durante la richiesta; paused esegue
+  la mossa completa e poi richiede con il gioco fermo.
+- Tutte le mosse sono interrompibili, incluso il doppio salto. Non usare committed,
+  latch, scelte differite, rivalutazioni o attese automatiche dell'atterraggio.
+  Una sequenza di salto in aria non garantisce un decollo. Conservare il rilascio
+  tecnico di A e le transizioni interne del doppio salto. A fine sequenza si
+  rilasciano tutti i pulsanti. Non cambiare le durate calibrate senza rimisurarle.
+- Offrire continue solo con una mossa attiva nell'osservazione. Non riavvia mai
+  una sequenza. Se arriva dopo la fine è non applicabile: noop, un frame e nuova
+  richiesta. Una scelta non offerta è una risposta invalida.
+- Dopo una sostituzione in aria la stima dell'atterraggio resta sconosciuta fino
+  al prossimo decollo da terra. Conservare la tabella JUMP_AIRTIME.
 - L'età di una risposta si controlla alla ricezione, in frame di gioco
   (`max_decision_frames`); in `paused` non scade. L'età all'avvio della mossa
   è registrata come misura.
@@ -122,6 +126,44 @@ non duplicare configurazioni in nuovi moduli.
 
 ## Aggiungere o modificare un modello
 
+### Controllo diretto dei pulsanti
+
+`--control-mode buttons` usa `app/control.py`: mantiene esattamente i pulsanti
+scelti dal modello fino alla prossima scelta. Non inserisce rilasci di A,
+transizioni all'atterraggio o altre scelte automatiche. Ripetere la combinazione
+non interrompe la pressione. Non offre `continue`. A turni ogni scelta esegue
+un frame. `buttons` è il default; `moves` conserva le sequenze e le regole descritte sopra.
+Le scelte effettivamente offerte sono in `control_context["choices"]`, insieme
+a `control_mode`; gli adapter devono rispettarle. Le stime di atterraggio sono
+omesse nel controllo diretto, che non conosce quando il modello rilascerà A.
+I test dedicati sono in `tests/test_button_control.py`. Risultati ancora versione
+6; per i pulsanti il protocollo è `choice-buttons-v1`, prompt revisione 12.
+Il prompt diretto è abbreviato e omette `recent_moves` (mantiene i pulsanti realmente
+premuti); anche i blocchi sopra Mario ricevono `dx_at_response` quando stimabile.
+I tempi di A restano quelli calibrati (8/28 frame). In aria si omette la portata
+ipotetica di un nuovo salto; `jump_observation` riporta solo pressione iniziale,
+velocità e durata osservate, con la portata totale calibrata alla velocità iniziale,
+senza stimare l'atterraggio. Questo contesto viene omesso con `--no-scene`.
+`--control-mode timed` (`TimedExecutor`, `TIMED_MOVES`) fa scegliere al modello pulsanti e
+durata: l'adapter Choice pone `buttons` e poi `frames`, con `state.chosen_buttons`,
+nello stesso timeout, e unisce le risposte in una mossa come `right_run_jump_28`.
+Con A le durate sono 2/4/8/16/28 frame, senza A 2/4/8. Nessun rilascio automatico,
+nessun fronte di A aggiunto. In realtime, alla fine della durata, si rilasciano i pulsanti.
+In realtime l'adapter usa una sola domanda con tutte le combinazioni (latenza dimezzata).
+`--no-image` passa `png=None` agli adapter, che devono omettere l'immagine (Jev senza padding).
+Il testo del prompt a turni è quello della vittoria: piccole modifiche hanno cambiato
+l'esito di decider, quindi rimisurare prima di ritoccarlo. Benchmark in `docs/benchmark-2026-10-29.md`.
+Protocollo `choice-timed-buttons-v1`, prompt `timed` revisione 1; test in
+`tests/test_timed_control.py`. A turni `decider` ha completato 1-1 (4/4 episodi).
+Non inserire i pulsanti scelti nelle istruzioni della seconda domanda: con
+"noop (no buttons)" il provider di Luna rispondeva sempre HTTP 502.
+Luna e Jev estendono entrambi `app/models/_choice.py::ChoiceModel`; usare questa
+base condivisa per altri modelli con lo stesso protocollo multimodale Choice.
+Anche `decider` (`perplexity/pplx-decider-v1.2`) usa questa base e ha superato
+la verifica live delle immagini; non ha ancora completato il livello.
+Anche `d1` (`liquid/d1.1`) usa questa base senza modifiche; il supporto alle
+immagini non è ancora verificato live e non ci sono risultati.
+
 Ogni modulo pubblico `app/models/<nome>.py` deve esportare una classe `Model`
 con `model_id` univoco, costruttore `(api_key, timeout)`, `build_request(...)`
 e `async decide(payload)`. La scoperta è automatica; i moduli con underscore
@@ -139,10 +181,13 @@ in `app/openrouter.py` e l'orchestrazione in `app/model_runner.py`.
 
 ## Risultati, credenziali e metodo di lavoro
 
-- `runs/<sessione>/` contiene `config.json`, `events.jsonl`, `summary.json`
+- `runs/<sessione>/` contiene `config.json`, `events.jsonl`, `frames.jsonl`, `summary.json`
   e, su richiesta, `screenshots/`. Leggere solo le sessioni utili all'analisi;
   non includere tutta la cartella nel contesto iniziale. I risultati hanno
-  versione `4`: preservare coerenza fra eventi, aggregazioni e documentazione.
+  versione `6`: preservare coerenza fra eventi, aggregazioni e documentazione.
+- `events.jsonl` riassume intervalli per decisione, inclusi continue; `frames.jsonl`
+  conserva i frame, con `index` della decisione e `move_index` della mossa.
+  Chiudere gli intervalli anche su errore o arresto. Prompt revisione 5.
 - Usare `perf_counter` per le misure temporali. Latenza della richiesta,
   preparazione, polling ed età dell'osservazione sono misure distinte.
   Non presentare la latenza OpenRouter come puro tempo di inferenza, né un

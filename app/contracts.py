@@ -44,6 +44,11 @@ def without_jump(action: Action) -> Action:
     return Action(action.value.removesuffix("_jump")) if action != Action.JUMP else Action.NOOP
 
 
+def with_jump(action: Action) -> Action:
+    """Same direction and run buttons with A pressed."""
+    return action if has_jump(action) else Action.JUMP if action == Action.NOOP else Action(action.value + "_jump")
+
+
 def keyboard_action(left: bool, right: bool, jump: bool, run: bool) -> Action:
     """Opposite directions cancel; running needs a direction."""
     direction = "left" if left and not right else "right" if right and not left else ""
@@ -60,7 +65,7 @@ class Observation:
 
 @dataclass(frozen=True)
 class Decision:
-    move: str  # a move name from app.moves, or "continue"
+    move: str  # an offered choice: scripted move, "continue", or direct Action value
     model: str
     request_id: str | None = None
     provider: str | None = None

@@ -78,9 +78,8 @@ def run_local(config: Config) -> None:
                         executor.settle(on_ground)
                         if executor.finished:
                             upcoming = upcoming or next(moves)
-                            if executor.can_start(upcoming, on_ground):
-                                executor.start(upcoming)
-                                upcoming = None
+                            executor.start(upcoming)
+                            upcoming = None
                         selected, _ = executor.current()
                     # One emulator step per tick keeps commands interruptible.
                     result = game.step(selected, 1)

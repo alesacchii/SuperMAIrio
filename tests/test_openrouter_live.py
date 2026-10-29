@@ -1,12 +1,13 @@
 """Explicit opt-in: real paid calls, first image interpretation then game loop."""
 
+from dataclasses import replace
 import asyncio
 import os
 import unittest
 
 import numpy as np
 
-from app.config import Config, DEFAULT_MODEL, openrouter_key
+from app.config import openrouter_key, parse_config
 from app.contracts import Observation
 from app.models import load_model
 from app.openrouter import encode_png
@@ -16,7 +17,18 @@ from app.runner import run
 @unittest.skipUnless(os.environ.get("SUPERMAIRIO_TEST_OPENROUTER") == "1", "requires explicit opt-in and OpenRouter credit")
 class OpenRouterLiveTests(unittest.TestCase):
     def test_image_interpretation_then_short_game_session(self):
-        client = load_model(DEFAULT_MODEL, openrouter_key(), 10)
+        config = parse_config([])
+        asyncio.run(self.check_images(config))
+        run(replace(config, headless=True, max_frames=12, execution_mode="paused", save_screenshots=True))
+
+    async def check_images(self, config):
+        client = load_model(config.model, openrouter_key(), config.request_timeout)
+        try:
+            await self.classify_colors(client)
+        finally:
+            await client.aclose()
+
+    async def classify_colors(self, client):
         for color, expected in (([255, 0, 0], "walk_left"), ([0, 0, 255], "walk_right")):
             rgb = np.full((240, 256, 3), color, dtype=np.uint8)
             obs = Observation(rgb, {})
@@ -27,9 +39,8 @@ class OpenRouterLiveTests(unittest.TestCase):
                 "type": "choice", "instructions": "Select the dominant color visible in the image.",
                 "criteria": {"walk_left": "Red", "walk_right": "Blue", "wait": "Green"},
             }
-            decision = asyncio.run(client.decide(payload))
+            decision = await client.decide(payload)
             self.assertEqual(decision.move, expected, "Provider did not interpret the embedded image correctly")
-        run(Config(headless=True, max_frames=12, execution_mode="paused", save_screenshots=True))
 
 
 if __name__ == "__main__":

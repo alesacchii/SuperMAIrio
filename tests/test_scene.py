@@ -30,6 +30,63 @@ def enemy(ram, slot, kind, x, y=184, state=0, speed=0):
 
 
 class SyntheticSceneTests(unittest.TestCase):
+    def test_surfaces_describe_each_step_and_clip_ground_to_screen(self):
+        ram = ram_with(x=200, screen_x=117)  # visible [83, 339)
+        for cx, highest_row in ((224, 10), (240, 9), (256, 8)):
+            for row in range(highest_row, 11):
+                put(ram, cx, row, 0x61)
+        surfaces = s.read_scene(ram)["surfaces"]
+        self.assertEqual([(p["dx"], p["width_px"], p["top_dy"]) for p in surfaces],
+            [(-117, 141, 0), (24, 16, 16), (40, 16, 32), (56, 16, 48), (72, 67, 0)])
+        self.assertFalse(surfaces[0]["left_edge_visible"])
+        self.assertFalse(surfaces[-1]["right_edge_visible"])
+        self.assertTrue(all(not p["width_is_lower_bound"] for p in surfaces[1:-1]))
+        put(ram, 352, 7, 0x61)  # Entirely off-screen: must not affect any surface.
+        put(ram, 304, 7, 0x60)  # Hidden block: not a visible platform.
+        self.assertEqual(s.read_scene(ram)["surfaces"], surfaces)
+
+    def test_surfaces_keep_holes_and_floating_blocks_distinct(self):
+        ram = ram_with(x=200, screen_x=120)
+        for cx in (240, 256):
+            for row in s.FLOOR_ROWS:
+                put(ram, cx, row, 0)
+        put(ram, 192, 7, 0xC0)
+        surfaces = s.read_scene(ram)["surfaces"]
+        geometry = [(p["dx"], p["width_px"], p["top_dy"]) for p in surfaces]
+        self.assertEqual(geometry, [(-120, 160, 0), (-8, 16, 64), (72, 64, 0)])
+
+    def test_partial_pit_does_not_infer_an_offscreen_bank(self):
+        ram = ram_with(x=200, screen_x=120)  # visible [80, 336)
+        for cx in (320, 336, 352):
+            for row in s.FLOOR_ROWS:
+                put(ram, cx, row, 0)
+        expected = {"dx": 120, "width_px": 16, "near_edge_visible": True,
+            "far_edge_visible": False, "width_is_lower_bound": True, "under_mario": False}
+        self.assertEqual(s.read_scene(ram)["pit_ahead"], expected)
+        for row in s.FLOOR_ROWS:
+            put(ram, 336, row, 0x54)  # Moving the hidden bank must change nothing.
+        self.assertEqual(s.read_scene(ram)["pit_ahead"], expected)
+
+    def test_pit_edges_stay_fixed_while_mario_crosses(self):
+        for x in (235, 253, 269, 280):
+            ram = ram_with(x=x, screen_x=x - 160)
+            for cx in (240, 256, 272):
+                for row in s.FLOOR_ROWS:
+                    put(ram, cx, row, 0)
+            pit = s.read_scene(ram)["pit_ahead"]
+            self.assertEqual((x + pit["dx"], pit["width_px"]), (240, 48))
+            self.assertTrue(pit["under_mario"])
+            self.assertFalse(pit["width_is_lower_bound"])
+
+    def test_both_clipped_edges_and_partial_tiles(self):
+        ram = ram_with(x=200, screen_x=117)  # visible [83, 339)
+        for cx in range(80, 352, 16):
+            for row in s.FLOOR_ROWS:
+                put(ram, cx, row, 0)
+        self.assertEqual(s.read_scene(ram)["pit_ahead"], {"dx": -117, "width_px": 256,
+            "near_edge_visible": False, "far_edge_visible": False,
+            "width_is_lower_bound": True, "under_mario": True})
+
     def test_relative_positions_kinds_and_window(self):
         ram = ram_with()
         put(ram, 160, 9, 0x12)  # pipe, two tiles above the floor
@@ -53,7 +110,9 @@ class SyntheticSceneTests(unittest.TestCase):
         self.assertEqual(scene["enemies"], [{"type": "goomba", "dx": 80, "dy": 0, "moving": "left", "speed": -0.62},
             {"type": "shell", "dx": 100, "dy": 0, "moving": "still", "speed": 0.0}])
         self.assertEqual(scene["obstacle_ahead"], {"type": "pipe", "dx": 60, "height_tiles": 2})
-        self.assertEqual(scene["pit_ahead"], {"dx": 156, "width_px": 32})
+        self.assertEqual(scene["pit_ahead"], {"dx": 156, "width_px": 32,
+            "near_edge_visible": True, "far_edge_visible": True,
+            "width_is_lower_bound": False, "under_mario": False})
         self.assertEqual(scene["blocks"], [{"type": "question_block", "dx": -4, "dy": 48}])
         self.assertEqual(scene["items"], [{"type": "mushroom", "dx": 20, "dy": 0, "moving": "right", "speed": 1.0}])
         self.assertEqual(scene["progress"], {"x": 100, "flag_x": s.FLAG_X, "percent": 3})
@@ -87,7 +146,7 @@ class RealLevelSceneTests(unittest.TestCase):
             self.assertTrue(first["mario"]["on_ground"])
             self.assertEqual(first["progress"]["x"], 40)
             executor = MoveExecutor()
-            held_on_ground = 0  # frames with committed A while back on the ground after take-off
+            held_on_ground = 0  # frames with A while back on the ground after take-off
             airborne = False
             # A scene-driven script: jump at enemies, walls and pits, run otherwise.
             for _ in range(900):
@@ -101,7 +160,7 @@ class RealLevelSceneTests(unittest.TestCase):
                 executor.settle(ground)
                 danger = (any(0 < e["dx"] < 80 for e in scene["enemies"])
                     or any(scene[key] and scene[key]["dx"] < 40 for key in ("obstacle_ahead", "pit_ahead")))
-                if not executor.committed and (executor.finished or not executor.move.jump):
+                if executor.finished or not executor.move.jump:
                     if danger and ground:
                         executor.start(MOVES["high_jump_right"])
                     elif executor.finished:
@@ -109,7 +168,7 @@ class RealLevelSceneTests(unittest.TestCase):
                 action, source = executor.current()
                 if executor.frames == 0:
                     airborne = False
-                if source == "move" and executor.committed and has_jump(action):
+                if source == "move" and has_jump(action):
                     airborne |= ground is False
                     held_on_ground += airborne and ground is True
                 result = game.step(action, 1)

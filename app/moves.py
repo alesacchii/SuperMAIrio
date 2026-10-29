@@ -12,8 +12,6 @@ LANDING_CAP = 60  # frames: longest wait for a landing before the script moves o
 class Segment:
     action: Action
     frames: int
-    # Committed frames cannot be cut by a new decision; jumps keep A for their full height.
-    committed: bool = False
     # Ends as soon as Mario is on the ground; frames is then only an upper bound.
     until_landed: bool = False
 
@@ -29,12 +27,12 @@ class Move:
         return has_jump(self.segments[0].action)
 
     def summary(self):
-        return [{"action": s.action.value, "frames": s.frames, "committed": s.committed,
+        return [{"action": s.action.value, "frames": s.frames,
             "until_landed": s.until_landed} for s in self.segments]
 
 
 def _jump(action, hold, then):
-    return (Segment(action, hold, committed=True), Segment(then, LANDING_CAP, until_landed=True))
+    return (Segment(action, hold), Segment(then, LANDING_CAP, until_landed=True))
 
 
 # Calibrated in 1-1: holding A about 25 frames reaches the full jump height (64 px from standing,
@@ -42,31 +40,43 @@ def _jump(action, hold, then):
 SHORT_HOLD = 8
 HIGH_HOLD = 28
 
+# Frames from the A press to the landing at the take-off height, measured in 1-1. The game picks the
+# jump physics from the speed at the press: up to 1 px/frame, up to 1.75 (walking), faster (running).
+JUMP_AIRTIME = ((1.0, 27, 44), (1.75, 30, 48), (float("inf"), 29, 50))  # (max speed, short_jump, high_jump)
+
+
+def _airborne(column):
+    frames = [row[column] for row in JUMP_AIRTIME]
+    return f"Airborne about {min(frames)}-{max(frames)} frames on flat ground; pressing A in the air does not start a new jump."
+
+
 MOVES = {move.name: move for move in (
-    Move("wait", "Release all buttons for 10 frames.", (Segment(Action.NOOP, 10),)),
+    Move("wait", "Release all buttons for 10 frames; current momentum does not stop immediately.", (Segment(Action.NOOP, 10),)),
     Move("walk_right", "Walk right for 16 frames: slower, more time to react to what appears ahead.",
         (Segment(Action.RIGHT, 16),)),
     Move("run_right", "Run right (right+B) for 16 frames: fast, little time to react to what appears ahead.",
         (Segment(Action.RIGHT_RUN, 16),)),
-    Move("walk_left", "Walk left for 16 frames.", (Segment(Action.LEFT, 16),)),
+    Move("walk_left", "Press left for 16 frames; if moving right, first brake before moving left.", (Segment(Action.LEFT, 16),)),
     Move("run_left", "Run left (left+B) for 16 frames.", (Segment(Action.LEFT_RUN, 16),)),
     Move("short_jump_right", f"Low jump to the right: A for {SHORT_HOLD} frames, then right+B until landing. About 3 tiles high; "
-        "covers about 1.5 tiles from standing, 5 tiles at full run. Stomping enemies, low walls.",
+        f"covers about 1.5 tiles from standing, 5 tiles at full run. {_airborne(1)} Stomping enemies, low walls.",
         _jump(Action.RIGHT_RUN_JUMP, SHORT_HOLD, Action.RIGHT_RUN)),
     Move("high_jump_right", f"Full-height jump to the right: A for {HIGH_HOLD} frames, then right+B until landing. About 4 tiles "
-        "high (5 at full run); covers about 3 tiles from standing, 5 walking, 9 at full run. Tall pipes, stairs and pits.",
+        f"high (5 at full run); covers about 3 tiles from standing, 5 walking, 9 at full run. {_airborne(2)} "
+        "Tall pipes, stairs and pits.",
         _jump(Action.RIGHT_RUN_JUMP, HIGH_HOLD, Action.RIGHT_RUN)),
     Move("double_jump_right", "Two full-height jumps to the right: jump, land, release A, jump again, land. "
-        "Consecutive obstacles, stairs.",
-        (Segment(Action.RIGHT_RUN_JUMP, HIGH_HOLD, committed=True),
-         Segment(Action.RIGHT_RUN, LANDING_CAP, committed=True, until_landed=True),
+        "Interruptible at any point by another move. "
+        f"{_airborne(2)} Consecutive obstacles, stairs.",
+        (Segment(Action.RIGHT_RUN_JUMP, HIGH_HOLD),
+         Segment(Action.RIGHT_RUN, LANDING_CAP, until_landed=True),
          *_jump(Action.RIGHT_RUN_JUMP, HIGH_HOLD, Action.RIGHT_RUN))),
-    Move("short_jump_left", f"Low jump to the left: A for {SHORT_HOLD} frames, then left+B until landing.",
+    Move("short_jump_left", f"Low jump to the left: A for {SHORT_HOLD} frames, then left+B until landing. {_airborne(1)}",
         _jump(Action.LEFT_RUN_JUMP, SHORT_HOLD, Action.LEFT_RUN)),
-    Move("high_jump_left", f"Full-height jump to the left: A for {HIGH_HOLD} frames, then left+B until landing.",
+    Move("high_jump_left", f"Full-height jump to the left: A for {HIGH_HOLD} frames, then left+B until landing. {_airborne(2)}",
         _jump(Action.LEFT_RUN_JUMP, HIGH_HOLD, Action.LEFT_RUN)),
     Move("high_jump_up", f"Jump straight up: A for {HIGH_HOLD} frames, then no buttons until landing. About 4 tiles high; "
-        "keeps the current momentum. Hits blocks above Mario.",
+        f"keeps the current momentum. {_airborne(2)} Hits blocks above Mario.",
         _jump(Action.JUMP, HIGH_HOLD, Action.NOOP)),
 )}
 CHOICES = (*MOVES, CONTINUE)
@@ -85,8 +95,77 @@ def jump_reach(speed) -> dict:
             return {"short_jump": short, "high_jump": tall}
 
 
+
+def jump_airtime(speed, hold) -> int:
+    """Flat-ground airtime for A held `hold` frames, between the two calibrated holds."""
+    short, high = next((short, high) for limit, short, high in JUMP_AIRTIME if abs(speed) <= limit)
+    share = min(max((hold - SHORT_HOLD) / (HIGH_HOLD - SHORT_HOLD), 0), 1)
+    return round(short + (high - short) * share)
+
+
+class Flight:
+    """Frames until a jump lands back at its take-off height; walls, platforms and pits change it."""
+
+    def __init__(self):
+        self.frames = None  # since the A press; None without a jump in progress
+        self.last_action = Action.NOOP
+        self._speed = self._hold = 0
+        self._holding = self._airborne = False
+        self._invalid = False
+
+    def invalidate(self):
+        self._invalid = True
+
+    def step(self, action, was_on_ground, on_ground, speed):
+        """Call once per frame with its buttons, the ground before and after it and the speed before it."""
+        pressed = has_jump(action) and not has_jump(self.last_action)
+        self.last_action = action
+        if pressed and was_on_ground is True:
+            self._invalid = False
+            self.frames = None
+        if on_ground is None:
+            self.frames = None
+        elif self.frames is None:
+            if pressed and was_on_ground is True and speed is not None:
+                self.frames, self._speed, self._hold = 1, speed, 1
+                self._holding, self._airborne = True, on_ground is False
+        else:
+            self.frames += 1
+            self._holding = self._holding and has_jump(action)
+            self._hold += self._holding
+            if on_ground is False:
+                self._airborne = True
+            elif self._airborne or self.frames > 3:  # landed, or A never left the ground
+                self.frames = None
+
+    def landing_in(self, speed, on_ground, hold_left=0):
+        """Estimated frames to the landing; a jump not pressed yet counts from now.
+        None when unknown, or once Mario falls below the take-off height."""
+        if self._invalid:
+            return None
+        if self.frames is not None:
+            left = jump_airtime(self._speed, self._hold + (hold_left if self._holding else 0)) - self.frames
+            return left if left > 0 else None
+        if hold_left and on_ground is True and speed is not None and not has_jump(self.last_action):
+            return jump_airtime(speed, hold_left)
+        return None
+
+    def observed(self):
+        """Observed initial input and elapsed frames, not a landing prediction.
+
+        A later replacement invalidates the landing estimate, but does not change
+        the historical speed at the initial A press or its actual hold duration.
+        """
+        if self.frames is None:
+            return None
+        return {"frames_since_A_press": self.frames, "speed_at_A_press": self._speed,
+            "initial_A_hold_frames": self._hold, "initial_A_still_held": self._holding,
+            "left_ground": self._airborne,
+            "flat_ground_reach_at_press": jump_reach(self._speed)}
+
+
 class MoveExecutor:
-    """Plays one move frame by frame; after the script its direction stays held, without A."""
+    """Interruptible button scripts; completion releases every button."""
 
     def __init__(self):
         self.move = None
@@ -100,12 +179,14 @@ class MoveExecutor:
         return self.move is None or self._segment >= len(self.move.segments)
 
     @property
-    def committed(self) -> bool:
-        return not self.finished and self.move.segments[self._segment].committed
+    def jump_hold_left(self) -> int:
+        if self.finished or self._release:
+            return 0
+        segment = self.move.segments[self._segment]
+        return segment.frames - self._segment_frames if has_jump(segment.action) else 0
 
     @property
     def remaining(self):
-        """Frames left in the script, or None while a landing segment is still ahead."""
         if self.finished:
             return 0
         segments = self.move.segments[self._segment:]
@@ -113,33 +194,21 @@ class MoveExecutor:
             return None
         return int(self._release) + sum(segment.frames for segment in segments) - self._segment_frames
 
-    @property
-    def tail_action(self) -> Action:
-        """Buttons held once the script ends, until the next move."""
-        return Action.NOOP if self.move is None else without_jump(self.move.segments[-1].action)
-
-    def can_start(self, move, on_ground) -> bool:
-        """A new move waits for committed frames; a jump also waits for the landing."""
-        return not self.committed and not (move.jump and on_ground is False)
-
     def start(self, move):
         self.move = move
         self.frames = self._segment = self._segment_frames = 0
         self._airborne = False
-        # A held through landing does not jump again: release it for one frame first.
+        # NES needs a new A edge; this release is part of the new script.
         self._release = move.jump and has_jump(self.last_action)
 
     def settle(self, on_ground):
-        """Skip what the ground has already ended; call once per frame, before current()."""
         if self.finished or self._release:
             return
         segment = self.move.segments[self._segment]
-        if segment.committed and has_jump(segment.action):
+        if has_jump(segment.action):
             if on_ground is False:
                 self._airborne = True
             elif on_ground is True and self._airborne:
-                # A ceiling or a higher platform ended the jump early: A held on the ground
-                # would block the next jump and every other move.
                 self._next_segment()
                 if not self.finished and self.move.segments[self._segment].until_landed:
                     self._next_segment()
@@ -151,12 +220,10 @@ class MoveExecutor:
             self._next_segment()
 
     def current(self) -> tuple[Action, str]:
-        if self.move is None:
+        if self.finished:
             return Action.NOOP, "waiting"
         if self._release:
             return without_jump(self.move.segments[self._segment].action), "release"
-        if self.finished:
-            return self.tail_action, "tail"
         return self.move.segments[self._segment].action, "move"
 
     def advance(self, frames):

@@ -61,6 +61,53 @@ def solid(code):
     return code != 0 and code not in HIDDEN
 
 
+def visible_pit(ram, x, left, right):
+    """First floor gap under/ahead of Mario, clipped to visible pixels.
+
+    Scan from the screen edge so a gap keeps its near edge as Mario crosses it.
+    Never inspect an off-screen neighbour to infer an unseen bank.
+    """
+    gap = None
+    for cx in range(left // TILE * TILE, right, TILE):
+        empty = not any(solid(tile(ram, cx, row)) for row in FLOOR_ROWS)
+        if empty and gap is None:
+            gap = max(left, cx)
+        end = min(cx + TILE, right) if empty else cx
+        if gap is not None and (not empty or end == right):
+            if end > x and gap < x + LOOKAHEAD:
+                near_visible, far_visible = gap > left, end < right
+                return {"dx": gap - x, "width_px": end - gap,
+                    "near_edge_visible": near_visible, "far_edge_visible": far_visible,
+                    "width_is_lower_bound": not (near_visible and far_visible),
+                    "under_mario": gap < x + TILE and end > x}
+            gap = None
+    return None
+
+
+def visible_surfaces(ram, x, feet, left, right):
+    """Exposed horizontal tile tops, clipped to the visible screen.
+
+    Report geometry only: no landing target, reachability ranking or action.
+    A clipped edge stays unknown without inspecting an off-screen neighbour.
+    """
+    surfaces = []
+    for row in range(ROWS):
+        start = None
+        for cx in range(left // TILE * TILE, right, TILE):
+            exposed = solid(tile(ram, cx, row)) and not solid(tile(ram, cx, row - 1))
+            if exposed and start is None:
+                start = max(left, cx)
+            end = min(cx + TILE, right) if exposed else cx
+            if start is not None and (not exposed or end == right):
+                left_visible, right_visible = start > left, end < right
+                surfaces.append({"dx": start - x, "width_px": end - start,
+                    "top_dy": feet - (TOP + row * TILE),
+                    "left_edge_visible": left_visible, "right_edge_visible": right_visible,
+                    "width_is_lower_bound": not (left_visible and right_visible)})
+                start = None
+    return sorted(surfaces, key=lambda surface: (surface["dx"], -surface["top_dy"]))
+
+
 def read_scene(ram) -> dict:
     """Describe the visible scene from a RAM snapshot (any indexable of byte values)."""
     x = ram[PLAYER_PAGE] * 256 + ram[PLAYER_X]
@@ -104,7 +151,8 @@ def read_scene(ram) -> dict:
     # The row Mario stands on, or would land on: first solid tile below his feet.
     column = x + TILE // 2
     base = next((row for row in range((feet - TOP) // TILE, ROWS) if solid(tile(ram, column, row))), FLOOR_ROWS[0])
-    obstacle = pit = None
+    obstacle = None
+    pit = visible_pit(ram, x, left, right)
     start = (column // TILE + 1) * TILE
     for cx in range(start, min(right, x + LOOKAHEAD), TILE):
         if obstacle is None and solid(tile(ram, cx, base - 1)):
@@ -113,12 +161,7 @@ def read_scene(ram) -> dict:
                 height += 1
             obstacle = {"type": KINDS.get(tile(ram, cx, base - height), "block"), "dx": cx - x,
                 "height_tiles": height}
-        if pit is None and not any(solid(tile(ram, cx, row)) for row in FLOOR_ROWS):
-            width = 0
-            while cx + width < right and not any(solid(tile(ram, cx + width, row)) for row in FLOOR_ROWS):
-                width += TILE
-            pit = {"dx": cx - x, "width_px": width}
-        if obstacle and pit:
+        if obstacle:
             break
 
     blocks = []
@@ -133,4 +176,5 @@ def read_scene(ram) -> dict:
 
     return {"mario": mario, "enemies": enemies, "obstacle_ahead": obstacle, "pit_ahead": pit,
         "blocks": blocks[:6], "items": items,
+        "surfaces": visible_surfaces(ram, x, feet, left, right),
         "progress": {"x": x, "flag_x": FLAG_X, "percent": round(100 * min(x, FLAG_X) / FLAG_X)}}
