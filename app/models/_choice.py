@@ -1,7 +1,10 @@
 """Shared multimodal Choice adapter for System One models."""
 
 import base64
+from io import BytesIO
 import json
+
+from PIL import Image, ImageOps
 
 from app.contracts import Action, Decision, DecisionRequest, has_jump
 from app.control import BUTTON_EFFECTS, BUTTON_MOVES, CONTINUE_DESCRIPTION, TIMED_MOVES
@@ -37,6 +40,36 @@ DIRECT_GUIDE = (
     "Only you select buttons; the program never jumps, brakes or releases them for you. "
 )
 HOLD_UNTIL_NEXT = "Input stays held until your next choice; repeating a choice does not release A. "
+HOLD_PREDICTED = ("Input stays held until your next choice, about {frames} game frames later (move.hold_frames). "
+    "Choosing an input with A while Mario is on the ground starts a jump, even if A was already held: "
+    "the choice then begins with one frame without A, so the NES sees a new press. In the air, an input "
+    "with A keeps A held. While rising, choosing an input without A ends the height gain: keep A for a "
+    "high jump. Choices ending in _hop, when offered, are short jumps: A for a few frames, then every button "
+    "released until your next choice; right_run_then_jump runs a few frames before pressing A. "
+    "contact_in_frames, when present, estimates the frames until Mario's edge horizontally meets that enemy, "
+    "wall or pit at the current speeds (heights and acceleration ignored); compare it with move.hold_frames. ")
+PREVIEW = ("Each option ends with its emulated preview: the result of holding only that choice for "
+    "{frames} game frames from the shown instant, extended while Mario is still in the air until he lands or "
+    "dies. It ignores your later choices, which can change what happens; it is information, not advice. ")
+
+
+def preview_text(result):
+    """One option's emulated preview, in words: outcome, travel and height change."""
+    if result["outcome"] == "dies":
+        return f" Preview: Mario dies after {result['frames']} frames."
+    if result["outcome"] == "flag":
+        return f" Preview: Mario reaches the flag after {result['frames']} frames."
+    moved = (f", {abs(result['dx'])} px {'right' if result['dx'] >= 0 else 'left'}" if "dx" in result else "")
+    height = (f", {abs(result['dy'])} px {'higher' if result['dy'] > 0 else 'lower'}"
+        if result.get("dy") else "")
+    where = "on the ground" if result.get("on_ground") else "in the air"
+    return f" Preview: alive after {result['frames']} frames{moved}{height}, {where}."
+RUN_UP = ("A standing jump covers little distance: before a wide pit, move close to its edge or back up for a "
+    "running start. ")
+PREDICTED_TIMING = ("The game runs at {fps} FPS and does not wait for you. The screenshot and state are not the "
+    "past: they show the instant your choice takes effect, predicted by emulating the game with the inputs "
+    "already chosen. They are exact unless your answer arrives late. Your next choice will likewise see the "
+    "instant it takes effect. ")
 HOLD_TIMED = ("You choose the buttons and how many game frames to hold them: right_run_jump for 28 frames holds "
     "right+B+A for 28 frames. A new choice replaces the current input at once; repeating A does not release it, "
     "so a new jump needs a choice without A first. {after}"
@@ -80,6 +113,10 @@ LEGEND = ("Distances in pixels, 16 px = 1 tile: dx = object left edge minus Mari
 LANDING = ("move.landing estimates the frames until Mario lands back at his take-off height (in_frames) and his "
     "horizontal travel until then at the current speed (travel_px, positive = right); a higher or lower surface, "
     "a ceiling, a pit or a collision changes it, and it is absent when unknown. ")
+# Jev requires sides >=256 and area >=78,400 pixels (280 squared): https://docs.typesafe.ai/images#limits
+# Every model receives the same padded screenshot and note, so the context never differs between models.
+MIN_IMAGE_SIDE = 280
+STALL_FRAMES = 90  # about 1.5 s at 60 FPS
 # Enemies worth an attention warning: close now or at response receipt, on Mario's level.
 # A jump clears the first goomba when started 18-90 px before it (measured), so the warning comes slightly earlier.
 CLOSE_AHEAD = (-16, 96)
@@ -164,7 +201,10 @@ def build_payload(model, observation, png, *, frames, previous_move=None, previo
     info = observation.info
     control = control_context or {"execution_mode": "paused"}
     realtime = control["execution_mode"] == "realtime"
+    # Predictive: the state is emulated at the instant the choice applies, so nothing is projected here.
+    predictive = control["execution_mode"] == "predictive"
     timed = control.get("control_mode") == "timed"
+    planned = timed or predictive
     direct = timed or control.get("control_mode") == "buttons"
     fps = control.get("game_fps", 60)
     scene = info.get("scene")
@@ -190,7 +230,7 @@ def build_payload(model, observation, png, *, frames, previous_move=None, previo
             "blocks": [predicted(block, speed, horizon) for block in scene["blocks"]] if direct else scene["blocks"],
             "items": [predicted(item, speed, horizon) for item in scene["items"]],
         }
-        if timed:
+        if planned:
             nearby = state["nearby"]
             nearby["enemies"] = [contact_in(enemy, speed, enemy=True) for enemy in nearby["enemies"]]
             nearby["obstacle_ahead"] = contact_in(nearby["obstacle_ahead"], speed)
@@ -199,6 +239,9 @@ def build_payload(model, observation, png, *, frames, previous_move=None, previo
             state["nearby"]["surfaces"] = [predicted(surface, speed, horizon)
                 for surface in scene.get("surfaces", [])]
     state["move"] = move_state(control, response_in, scene["mario"]["speed"] if scene else None)
+    if predictive:
+        state["move"]["hold_frames"] = control["decision_frames"]
+
     if direct and "input" in control:
         state["input"] = control["input"]
     if not direct:
@@ -206,10 +249,13 @@ def build_payload(model, observation, png, *, frames, previous_move=None, previo
             for item in control.get("recent_moves", [])[-3:]]
     wall = state["nearby"]["obstacle_ahead"] if scene else None
     warnings = close_enemies([enemy for enemy in state["nearby"]["enemies"]
-        if not (timed and wall and enemy["dx"] > wall["dx"])]) if scene else []
+        if not (planned and wall and enemy["dx"] > wall["dx"])]) if scene else []
+    stalled = control.get("frames_without_progress") or 0
+    if stalled >= STALL_FRAMES:
+        warnings.append(f"No forward progress for {stalled} frames: Mario is not getting closer to the flag.")
     if control.get("stuck") is True:
         warnings.append("No horizontal progress despite directional input.")
-    if timed and scene and scene["mario"].get("on_ground") is True:
+    if planned and scene and scene["mario"].get("on_ground") is True:
         warnings += ceiling_warnings(scene["blocks"], scene["mario"]["speed"])
     held_a = (control.get("input") or {}).get("held_frames", {}).get("A", 0)
     if timed and info.get("on_ground") is True and held_a >= A_HELD_ON_GROUND:
@@ -239,14 +285,25 @@ def build_payload(model, observation, png, *, frames, previous_move=None, previo
         if scene else "Read enemies, walls, pits and blocks from the screenshot. ")
     criteria = control.get("choices", {name: move.description for name, move in
         (TIMED_MOVES if timed else BUTTON_MOVES if direct else MOVES).items()}).copy()
-    if direct and not timed and not realtime:
+    if control.get("preview"):
+        criteria = {name: text + preview_text(control["preview"][name]) for name, text in criteria.items()}
+    if direct and not timed and not realtime and not predictive:
         criteria = {name: move.description.replace(" until your next choice", " for one frame")
             for name, move in BUTTON_MOVES.items()}
     if not direct and control.get("current_move") is not None and not control.get("move_finished", True):
         criteria[CONTINUE] = CONTINUE_DESCRIPTION
     instructions = ("Choose Mario's next move from the screenshot and the state. Each option is a complete "
         "move that may press several buttons over time. ") + GOAL + timing + perception + GUIDE.replace("{stairs}", "")
-    if direct:
+    if direct and predictive:
+        instructions = (DIRECT_GUIDE.replace("{holding}", HOLD_PREDICTED.replace("{frames}", str(control["decision_frames"])))
+            + PREDICTED_TIMING.replace("{fps}", str(fps)) + GOAL
+            + GUIDE.replace("{stairs}", STAIRS).replace("through the response delay", "until your next choice")
+            + RUN_UP)
+        if control.get("preview"):
+            instructions += PREVIEW.replace("{frames}", str(control["preview_frames"]))
+        if not scene:
+            instructions += "Read all geometry and enemies from the screenshot; no RAM scene is supplied. "
+    elif direct:
         instructions = DIRECT_GUIDE.replace("{holding}", HOLD_TIMED.replace("{after}", TIMED_AFTER[control["execution_mode"]])
             if timed else HOLD_UNTIL_NEXT) + (
             f"The game runs at up to {fps} FPS while you decide. response_in_frames estimates the delay and "
@@ -351,14 +408,31 @@ class ChoiceModel(OpenRouterClient):
     model_id: str
 
     def build_request(self, observation, png, *, frames, previous_move=None, previous_position=None, control_context=None):
+        padding = None
+        if png is not None:
+            with Image.open(BytesIO(png)) as image:
+                source_size = image.size
+                right = max(0, MIN_IMAGE_SIDE - image.width)
+                bottom = max(0, MIN_IMAGE_SIDE - image.height)
+                if right or bottom:
+                    output = BytesIO()
+                    ImageOps.expand(image, border=(0, 0, right, bottom), fill=0).save(output, format="PNG")
+                    png = output.getvalue()
+            padding = {"source_size": list(source_size), "sent_size": [source_size[0] + right, source_size[1] + bottom],
+                "padding_right": right, "padding_bottom": bottom}
         payload = build_payload(
             self.model_id, observation, png, frames=frames,
             previous_move=previous_move, previous_position=previous_position, control_context=control_context,
         )
-        return DecisionRequest(payload, {
-            "context": json.loads(payload["state"][0]["text"]),
-            "questions": payload["questions"],
-        })
+        if padding is not None and (padding["padding_right"] or padding["padding_bottom"]):
+            for question in payload["questions"].values():
+                question["instructions"] += (f" The screenshot has {padding['padding_right']} black padding columns "
+                    f"on the right and {padding['padding_bottom']} black padding rows at the bottom. Ignore this "
+                    "padding; game pixels and coordinates are unchanged.")
+        trace = {"context": json.loads(payload["state"][0]["text"]), "questions": payload["questions"]}
+        if padding is not None:
+            trace["image_preprocessing"] = padding
+        return DecisionRequest(payload, trace)
 
     async def exchange(self, payload):
         questions = payload["questions"]

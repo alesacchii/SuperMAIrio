@@ -1,8 +1,10 @@
 [project]
 name = "supermairio"
 version = "0.1.0"
-description = "Esperimenti con un modello System 1 per controllare Super Mario Bros."
+description = "Modelli di decisione rapida giocano a Super Mario Bros a 60 FPS, con il gioco mai in pausa."
 readme = "README.md"
+license = "MIT"
+license-files = ["LICENSE"]
 requires-python = ">=3.13,<3.14"
 dependencies = [
     "gym-super-mario-bros==9.1.0",
@@ -14,6 +16,9 @@ dependencies = [
     "pyglet==1.5.31",
     "python-dotenv>=1.2.4",
 ]
+
+[project.urls]
+Repository = "https://github.com/alesacchii/SuperMAIrio"
 
 [tool.uv]
 package = false

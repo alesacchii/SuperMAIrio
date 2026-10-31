@@ -8,7 +8,8 @@ from uuid import uuid4
 
 from app.config import DISPLAY_FPS, PROJECT_ROOT
 from app.moves import MOVES
-from app.control import BUTTON_MOVES, DIRECT_PROMPT_REVISION, TIMED_MOVES, TIMED_PROMPT_REVISION
+from app.control import (BUTTON_MOVES, DIRECT_PROMPT_REVISION, PREDICTIVE_MOVES, PREDICTIVE_PROMPT_REVISION,
+    TIMED_MOVES, TIMED_PROMPT_REVISION)
 
 RESULTS_VERSION = 6
 
@@ -23,13 +24,15 @@ class SessionLog:
         if self.save_screenshots:
             (self.path / "screenshots").mkdir()
         direct, timed = config.control_mode == "buttons", config.control_mode == "timed"
+        predictive = config.execution_mode == "predictive"
         self._write("config.json", {**asdict(config), "results_version": RESULTS_VERSION,
-            "prompt_revision": DIRECT_PROMPT_REVISION if direct else TIMED_PROMPT_REVISION if timed else 5,
-            "protocol": "choice-buttons-v1" if direct else "choice-timed-buttons-v1" if timed else "openrouter-choice-scene-v5",
+            "prompt_revision": PREDICTIVE_PROMPT_REVISION if direct and predictive else DIRECT_PROMPT_REVISION if direct else TIMED_PROMPT_REVISION if timed else 5,
+            "protocol": "choice-buttons-predictive-v1" if direct and predictive else "choice-buttons-v1" if direct else "choice-timed-buttons-v1" if timed else "openrouter-choice-scene-v5",
             "game_paused_during_request": config.execution_mode == "paused",
-            "fps_target": config.game_fps if config.execution_mode == "realtime" else DISPLAY_FPS,
+            "fps_target": config.game_fps if config.execution_mode in ("realtime", "predictive") else DISPLAY_FPS,
             "clock": "perf_counter", "percentile_method": "nearest-rank",
-            "moves": ({name: {"action": name, "duration": "one_frame" if config.execution_mode == "paused"
+            "moves": ({name: move.summary() for name, move in PREDICTIVE_MOVES.items()} if direct and predictive else
+                {name: {"action": name, "duration": "one_frame" if config.execution_mode == "paused"
                 else "until_next_choice"} for name in BUTTON_MOVES} if direct else
                 {name: move.summary() for name, move in (TIMED_MOVES if timed else MOVES).items()})})
         self._events = (self.path / "events.jsonl").open("a", encoding="utf-8")

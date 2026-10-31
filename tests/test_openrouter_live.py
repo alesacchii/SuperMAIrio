@@ -1,6 +1,5 @@
 """Explicit opt-in: real paid calls, first image interpretation then game loop."""
 
-from dataclasses import replace
 import asyncio
 import os
 import unittest
@@ -17,9 +16,9 @@ from app.runner import run
 @unittest.skipUnless(os.environ.get("SUPERMAIRIO_TEST_OPENROUTER") == "1", "requires explicit opt-in and OpenRouter credit")
 class OpenRouterLiveTests(unittest.TestCase):
     def test_image_interpretation_then_short_game_session(self):
-        config = parse_config([])
+        config = parse_config(["--execution-mode", "paused", "--headless", "--max-frames", "12", "--save-screenshots"])
         asyncio.run(self.check_images(config))
-        run(replace(config, headless=True, max_frames=12, execution_mode="paused", save_screenshots=True))
+        run(config)
 
     async def check_images(self, config):
         client = load_model(config.model, openrouter_key(), config.request_timeout)

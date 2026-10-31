@@ -148,6 +148,7 @@ class DecisionRequestHandle:
         self._cancel_callback = None
         self._task = None
         self._cancel_requested = False
+        self.hedge_losers = 0
 
     def bind(self, future):
         self.future = future
@@ -191,6 +192,8 @@ class DecisionWorker:
         self.client = client
         self._closed = False
         self._tasks = set()
+        # Answers of losing hedged copies: not used for control, only for their cost.
+        self.extra_decisions = []
         self._loop = asyncio.new_event_loop()
         self._thread = Thread(target=self._loop.run_forever, name="decisions", daemon=True)
         self._thread.start()
@@ -222,7 +225,7 @@ class DecisionWorker:
         finally:
             self._tasks.discard(task)
 
-    async def _decide(self, handle, payload):
+    async def _decide(self, handle, payload, copies=1):
         handle._task = asyncio.current_task()
         try:
             if handle._cancel_requested:
@@ -233,9 +236,39 @@ class DecisionWorker:
             else:
                 self.ready.result()
             handle.started_at = perf_counter()
-            return await self.client.decide(payload)
+            if copies == 1:
+                return await self.client.decide(payload)
+            return await self._race(handle, payload, copies)
         finally:
             handle.completed_at = perf_counter()
+
+    async def _race(self, handle, payload, copies):
+        """Identical requests in parallel; the first valid answer wins (hedging against slow replies).
+
+        Losing copies keep running in the background so that their cost is still recorded."""
+        pending = {asyncio.ensure_future(self.client.decide(payload)) for _ in range(copies)}
+        error = None
+        try:
+            while pending:
+                done, pending = await asyncio.wait(pending, return_when=asyncio.FIRST_COMPLETED)
+                for task in done:
+                    if task.exception() is None:
+                        handle.hedge_losers = len(pending)
+                        for loser in pending:
+                            self._tasks.add(loser)
+                            loser.add_done_callback(self._record_loser)
+                        pending = set()
+                        return task.result()
+                    error = error or task.exception()
+            raise error
+        finally:
+            for task in pending:
+                task.cancel()
+
+    def _record_loser(self, task):
+        self._tasks.discard(task)
+        if not task.cancelled() and task.exception() is None:
+            self.extra_decisions.append(task.result())
 
     def _cancel_request(self, handle):
         # Runs on the worker loop. Repeated cancellation must not interrupt cleanup.
@@ -249,12 +282,12 @@ class DecisionWorker:
         if not self._closed:
             self._loop.call_soon_threadsafe(self._cancel_request, handle)
 
-    def submit(self, payload):
+    def submit(self, payload, copies=1):
         if self._closed:
             raise RuntimeError("Il worker è chiuso")
         handle = DecisionRequestHandle()
         handle._cancel_callback = lambda: self._schedule_cancel(handle)
-        handle.bind(asyncio.run_coroutine_threadsafe(self._tracked(self._decide(handle, payload)), self._loop))
+        handle.bind(asyncio.run_coroutine_threadsafe(self._tracked(self._decide(handle, payload, copies)), self._loop))
         return handle
 
     async def _shutdown(self):

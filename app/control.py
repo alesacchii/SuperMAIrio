@@ -1,12 +1,13 @@
 """Model-independent control protocols; only model decisions change buttons."""
 
-from app.contracts import Action, BUTTONS, has_jump
-from app.moves import CONTINUE, MOVES, Move, MoveExecutor, Segment
+from app.contracts import Action, BUTTONS, has_jump, without_jump
+from app.moves import CONTINUE, MOVES, SHORT_HOLD, Move, MoveExecutor, Segment
 
 CONTINUE_DESCRIPTION = ("Keep the current move without restarting it. If it ends before your answer arrives, "
     "continue has no effect: buttons remain released and you will be asked again. Never repeats a move.")
 DIRECT_PROMPT_REVISION = 13
 TIMED_PROMPT_REVISION = 1
+PREDICTIVE_PROMPT_REVISION = 1
 # Durations the model can choose, in game frames. 8 and 28 are the calibrated short and full A holds.
 # Long holds only set a jump's height: without A they would leave Mario without reactions.
 TIMED_FRAMES = (2, 4, 8, 16, 28)
@@ -49,6 +50,40 @@ TIMED_MOVES = {
         (Segment(action, frames),))
     for action in Action for frames in timed_frames(action)
 }
+
+
+# Predictive control: held inputs plus short jumps, each one a model choice. A short jump holds its
+# buttons with A for the calibrated short hold, then releases every button until the next choice.
+HOP_FRAMES = SHORT_HOLD
+HOP_ACTIONS = {"right_hop": Action.RIGHT_JUMP, "right_run_hop": Action.RIGHT_RUN_JUMP}
+HOP_MOVES = {
+    name: Move(name, f"Short jump: hold {'+'.join(BUTTONS[action])} for {HOP_FRAMES} game frames, then release "
+        "all buttons until your next choice.", (Segment(action, HOP_FRAMES), Segment(Action.NOOP, 1)))
+    for name, action in HOP_ACTIONS.items()
+}
+# A jump with a short run-up: from a standstill a jump covers little distance (measured in 1-1:
+# from the top step before the last pit, a standing jump falls in, 4 frames of running first clear it).
+RUN_UP_FRAMES = 4
+RUN_UP_MOVES = {"right_run_then_jump": Move("right_run_then_jump",
+    f"Jump with a run-up: hold right+B for {RUN_UP_FRAMES} game frames, then right+B+A until your next choice.",
+    (Segment(Action.RIGHT_RUN, RUN_UP_FRAMES), Segment(Action.RIGHT_RUN_JUMP, 1)))}
+# Each offered choice costs one emulated preview per request: jumps to the left and straight up are left out.
+PREDICTIVE_MOVES = {**{name: move for name, move in BUTTON_MOVES.items()
+    if name not in ("jump", "left_jump", "left_run_jump")}, **HOP_MOVES, **RUN_UP_MOVES}
+
+
+def choice_frames(name, held, on_ground):
+    """First frames of a predictive choice and the input then held until the next choice.
+
+    Choosing A on the ground while A is held starts a new jump: the choice begins with one frame
+    without A, the press edge the NES needs. In the air A stays held."""
+    if name in RUN_UP_MOVES:
+        return [Action.RIGHT_RUN] * RUN_UP_FRAMES, Action.RIGHT_RUN_JUMP
+    action = HOP_ACTIONS.get(name) or Action(name)
+    prefix = [without_jump(action)] if has_jump(action) and has_jump(held) and on_ground is True else []
+    if name in HOP_MOVES:
+        return prefix + [action] * HOP_FRAMES, Action.NOOP
+    return prefix, action
 
 
 class ButtonExecutor:

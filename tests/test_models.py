@@ -122,7 +122,7 @@ class ModelTests(unittest.TestCase):
     def test_model_selection_precedence_and_fallback(self):
         with tempfile.TemporaryDirectory() as directory, \
                 patch("app.config.PROJECT_ROOT", Path(directory)), patch.dict(os.environ, {}, clear=True):
-            self.assertEqual(parse_config([]).model, MODEL_ID)
+            self.assertEqual(parse_config([]).model, DECIDER_MODEL_ID)
             envfile = Path(directory, ".env")
             envfile.write_text("OPENROUTER_MODEL=typesafe/jev-1.14\n", encoding="utf-8")
             self.assertEqual(parse_config([]).model, JEV_MODEL_ID)
@@ -131,7 +131,7 @@ class ModelTests(unittest.TestCase):
                 self.assertEqual(parse_config([]).model, "gpt_luna")
                 self.assertEqual(parse_config(["--model", "jev"]).model, "jev")
             envfile.write_text("OPENROUTER_MODEL=\n", encoding="utf-8")
-            self.assertEqual(parse_config([]).model, MODEL_ID)
+            self.assertEqual(parse_config([]).model, DECIDER_MODEL_ID)
             for value in ("unknown/model", "   "):
                 with patch.dict(os.environ, {"OPENROUTER_MODEL": value}), \
                         patch("sys.stderr", io.StringIO()), self.assertRaises(SystemExit):

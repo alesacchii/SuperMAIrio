@@ -108,6 +108,11 @@ def visible_surfaces(ram, x, feet, left, right):
     return sorted(surfaces, key=lambda surface: (surface["dx"], -surface["top_dy"]))
 
 
+def read_speed(ram) -> float:
+    """Mario's horizontal speed in px per frame (positive = right)."""
+    return round(signed(ram[PLAYER_SPEED]) / 16, 2)
+
+
 def read_scene(ram) -> dict:
     """Describe the visible scene from a RAM snapshot (any indexable of byte values)."""
     x = ram[PLAYER_PAGE] * 256 + ram[PLAYER_X]
@@ -120,7 +125,7 @@ def read_scene(ram) -> dict:
     mario = {"size": {0: "small", 1: "big", 2: "fire"}.get(ram[POWERUP_LEVEL], "unknown"),
         "on_ground": on_ground,
         "vertical": "none" if on_ground else "rising" if vertical < 0 else "falling",
-        "speed": round(signed(ram[PLAYER_SPEED]) / 16, 2), "screen_x": screen_x}
+        "speed": read_speed(ram), "screen_x": screen_x}
 
     enemies = []
     for slot in range(5):

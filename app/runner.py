@@ -113,7 +113,10 @@ def run_local(config: Config) -> None:
 
 
 def run_model(config: Config) -> None:
-    from app.model_runner import run_model as run_session
+    if config.execution_mode == "predictive":
+        from app.predictive import run_predictive as run_session
+    else:
+        from app.model_runner import run_model as run_session
     run_session(config, game_factory=MarioGame, key_provider=openrouter_key)
 
 

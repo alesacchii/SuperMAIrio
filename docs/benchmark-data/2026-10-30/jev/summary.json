@@ -1,0 +1,601 @@
+{
+  "results_version": 6,
+  "status": "finished",
+  "execution_mode": "predictive",
+  "requests": 176,
+  "decisions": 176,
+  "moves": 171,
+  "continues": 0,
+  "frames": 4924,
+  "waiting_frames": 302,
+  "jump_release_frames": 0,
+  "airborne_frames": 2726,
+  "execution_intervals": 0,
+  "not_applicable_decisions": 0,
+  "stale_responses": 0,
+  "discarded_responses": 5,
+  "cancelled_requests": 0,
+  "retried_requests": 0,
+  "errors": 0,
+  "late_choices": 0,
+  "prediction_mismatches": 1,
+  "resyncs": 1,
+  "speculation_hits": 0,
+  "speculation_misses": 0,
+  "unused_speculative_requests": 0,
+  "unused_speculative_answers": 0,
+  "unused_speculative_failures": 0,
+  "hedge_losers": 164,
+  "hedged_answers": 164,
+  "unused_cost_unknown": 0,
+  "wall_seconds": 82.0118308000092,
+  "requests_per_second": 2.1460318381281676,
+  "decisions_per_second": 2.1460318381281676,
+  "moves_per_second": 2.085065024544981,
+  "effective_fps": 60.04011801672215,
+  "timings": {
+    "request_seconds": {
+      "samples": 176,
+      "median": 0.2093477000016719,
+      "p95": 0.23532669999985956
+    },
+    "preparation_seconds": {
+      "samples": 176,
+      "median": 0.22918370000115829,
+      "p95": 0.3254767000034917
+    },
+    "dispatch_seconds": {
+      "samples": 0,
+      "median": null,
+      "p95": null
+    },
+    "polling_seconds": {
+      "samples": 0,
+      "median": null,
+      "p95": null
+    },
+    "observation_age_seconds": {
+      "samples": 0,
+      "median": null,
+      "p95": null
+    },
+    "observation_age_frames": {
+      "samples": 0,
+      "median": null,
+      "p95": null
+    },
+    "observation_to_first_frame_seconds": {
+      "samples": 0,
+      "median": null,
+      "p95": null
+    },
+    "observation_to_last_frame_seconds": {
+      "samples": 0,
+      "median": null,
+      "p95": null
+    },
+    "projection_seconds": {
+      "samples": 176,
+      "median": 5.750000127591193e-06,
+      "p95": 3.6900004488416016e-05
+    },
+    "late_frames": {
+      "samples": 171,
+      "median": 0,
+      "p95": 0
+    }
+  },
+  "known_cost": 0.034990158,
+  "cost_known_requests": 176,
+  "cost_missing_received_requests": 0,
+  "episodes": [
+    {
+      "episode": 1,
+      "reason": "death",
+      "started_at": 74250.8259514,
+      "ended_at": 74253.6454454,
+      "reward": 249.0,
+      "initial_x_pos": 40,
+      "x_pos": 315,
+      "max_x_pos": 315,
+      "terminated": true,
+      "truncated": false,
+      "death": true,
+      "completed": false,
+      "speculative_width": 0,
+      "requests": 4,
+      "decisions": 4,
+      "moves": 3,
+      "continues": 0,
+      "frames": 170,
+      "waiting_frames": 64,
+      "jump_release_frames": 0,
+      "airborne_frames": 1,
+      "execution_intervals": 0,
+      "not_applicable_decisions": 0,
+      "stale_responses": 0,
+      "discarded_responses": 1,
+      "cancelled_requests": 0,
+      "retried_requests": 0,
+      "errors": 0,
+      "late_choices": 0,
+      "prediction_mismatches": 0,
+      "resyncs": 0,
+      "speculation_hits": 0,
+      "speculation_misses": 0,
+      "unused_speculative_requests": 0,
+      "unused_speculative_answers": 0,
+      "unused_speculative_failures": 0,
+      "hedge_losers": 4,
+      "hedged_answers": 4,
+      "unused_cost_unknown": 0,
+      "wall_seconds": 2.819494000010309,
+      "requests_per_second": 1.4186942763436896,
+      "decisions_per_second": 1.4186942763436896,
+      "moves_per_second": 1.0640207072577672,
+      "effective_fps": 60.294506744606814,
+      "timings": {
+        "request_seconds": {
+          "samples": 4,
+          "median": 0.21801880000566598,
+          "p95": 0.24996380000084173
+        },
+        "preparation_seconds": {
+          "samples": 4,
+          "median": 0.23837300000013784,
+          "p95": 0.36835960000462364
+        },
+        "dispatch_seconds": {
+          "samples": 0,
+          "median": null,
+          "p95": null
+        },
+        "polling_seconds": {
+          "samples": 0,
+          "median": null,
+          "p95": null
+        },
+        "observation_age_seconds": {
+          "samples": 0,
+          "median": null,
+          "p95": null
+        },
+        "observation_age_frames": {
+          "samples": 0,
+          "median": null,
+          "p95": null
+        },
+        "observation_to_first_frame_seconds": {
+          "samples": 0,
+          "median": null,
+          "p95": null
+        },
+        "observation_to_last_frame_seconds": {
+          "samples": 0,
+          "median": null,
+          "p95": null
+        },
+        "projection_seconds": {
+          "samples": 4,
+          "median": 7.000002369750291e-06,
+          "p95": 0.2342789999966044
+        },
+        "late_frames": {
+          "samples": 3,
+          "median": 0,
+          "p95": 0
+        }
+      },
+      "known_cost": 0.0007473480000000001,
+      "cost_known_requests": 4,
+      "cost_missing_received_requests": 0
+    },
+    {
+      "episode": 2,
+      "reason": "death",
+      "started_at": 74254.0906783,
+      "ended_at": 74268.0803925,
+      "reward": 1424.0,
+      "initial_x_pos": 40,
+      "x_pos": 1522,
+      "max_x_pos": 1522,
+      "terminated": true,
+      "truncated": false,
+      "death": true,
+      "completed": false,
+      "speculative_width": 0,
+      "requests": 29,
+      "decisions": 29,
+      "moves": 28,
+      "continues": 0,
+      "frames": 840,
+      "waiting_frames": 74,
+      "jump_release_frames": 0,
+      "airborne_frames": 434,
+      "execution_intervals": 0,
+      "not_applicable_decisions": 0,
+      "stale_responses": 0,
+      "discarded_responses": 1,
+      "cancelled_requests": 0,
+      "retried_requests": 0,
+      "errors": 0,
+      "late_choices": 0,
+      "prediction_mismatches": 0,
+      "resyncs": 0,
+      "speculation_hits": 0,
+      "speculation_misses": 0,
+      "unused_speculative_requests": 0,
+      "unused_speculative_answers": 0,
+      "unused_speculative_failures": 0,
+      "hedge_losers": 26,
+      "hedged_answers": 26,
+      "unused_cost_unknown": 0,
+      "wall_seconds": 13.989714199997252,
+      "requests_per_second": 2.0729515689466833,
+      "decisions_per_second": 2.0729515689466833,
+      "moves_per_second": 2.001470480362315,
+      "effective_fps": 60.044114410869454,
+      "timings": {
+        "request_seconds": {
+          "samples": 29,
+          "median": 0.2164883999939775,
+          "p95": 0.24316909999470226
+        },
+        "preparation_seconds": {
+          "samples": 29,
+          "median": 0.24519259999215137,
+          "p95": 0.32200979998742696
+        },
+        "dispatch_seconds": {
+          "samples": 0,
+          "median": null,
+          "p95": null
+        },
+        "polling_seconds": {
+          "samples": 0,
+          "median": null,
+          "p95": null
+        },
+        "observation_age_seconds": {
+          "samples": 0,
+          "median": null,
+          "p95": null
+        },
+        "observation_age_frames": {
+          "samples": 0,
+          "median": null,
+          "p95": null
+        },
+        "observation_to_first_frame_seconds": {
+          "samples": 0,
+          "median": null,
+          "p95": null
+        },
+        "observation_to_last_frame_seconds": {
+          "samples": 0,
+          "median": null,
+          "p95": null
+        },
+        "projection_seconds": {
+          "samples": 29,
+          "median": 4.999994416721165e-06,
+          "p95": 0.005621100004645996
+        },
+        "late_frames": {
+          "samples": 28,
+          "median": 0.0,
+          "p95": 0
+        }
+      },
+      "known_cost": 0.005469492000000003,
+      "cost_known_requests": 29,
+      "cost_missing_received_requests": 0
+    },
+    {
+      "episode": 3,
+      "reason": "death",
+      "started_at": 74268.5164734,
+      "ended_at": 74281.1401693,
+      "reward": 1342.0,
+      "initial_x_pos": 40,
+      "x_pos": 1435,
+      "max_x_pos": 1435,
+      "terminated": true,
+      "truncated": false,
+      "death": true,
+      "completed": false,
+      "speculative_width": 0,
+      "requests": 27,
+      "decisions": 27,
+      "moves": 26,
+      "continues": 0,
+      "frames": 758,
+      "waiting_frames": 56,
+      "jump_release_frames": 0,
+      "airborne_frames": 326,
+      "execution_intervals": 0,
+      "not_applicable_decisions": 0,
+      "stale_responses": 0,
+      "discarded_responses": 1,
+      "cancelled_requests": 0,
+      "retried_requests": 0,
+      "errors": 0,
+      "late_choices": 0,
+      "prediction_mismatches": 1,
+      "resyncs": 1,
+      "speculation_hits": 0,
+      "speculation_misses": 0,
+      "unused_speculative_requests": 0,
+      "unused_speculative_answers": 0,
+      "unused_speculative_failures": 0,
+      "hedge_losers": 23,
+      "hedged_answers": 23,
+      "unused_cost_unknown": 0,
+      "wall_seconds": 12.623695899994345,
+      "requests_per_second": 2.138834792432864,
+      "decisions_per_second": 2.138834792432864,
+      "moves_per_second": 2.0596186890094246,
+      "effective_fps": 60.045806394967066,
+      "timings": {
+        "request_seconds": {
+          "samples": 27,
+          "median": 0.20817600000009406,
+          "p95": 0.24297379999188706
+        },
+        "preparation_seconds": {
+          "samples": 27,
+          "median": 0.22703720000572503,
+          "p95": 0.29963610001141205
+        },
+        "dispatch_seconds": {
+          "samples": 0,
+          "median": null,
+          "p95": null
+        },
+        "polling_seconds": {
+          "samples": 0,
+          "median": null,
+          "p95": null
+        },
+        "observation_age_seconds": {
+          "samples": 0,
+          "median": null,
+          "p95": null
+        },
+        "observation_age_frames": {
+          "samples": 0,
+          "median": null,
+          "p95": null
+        },
+        "observation_to_first_frame_seconds": {
+          "samples": 0,
+          "median": null,
+          "p95": null
+        },
+        "observation_to_last_frame_seconds": {
+          "samples": 0,
+          "median": null,
+          "p95": null
+        },
+        "projection_seconds": {
+          "samples": 27,
+          "median": 5.900001269765198e-06,
+          "p95": 0.10699069999100175
+        },
+        "late_frames": {
+          "samples": 26,
+          "median": 0.0,
+          "p95": 0
+        }
+      },
+      "known_cost": 0.004966878000000001,
+      "cost_known_requests": 27,
+      "cost_missing_received_requests": 0
+    },
+    {
+      "episode": 4,
+      "reason": "completed",
+      "started_at": 74281.6460485,
+      "ended_at": 74311.2357193,
+      "reward": 3050.0,
+      "initial_x_pos": 40,
+      "x_pos": 3161,
+      "max_x_pos": 3161,
+      "terminated": true,
+      "truncated": false,
+      "death": false,
+      "completed": true,
+      "speculative_width": 0,
+      "requests": 66,
+      "decisions": 66,
+      "moves": 65,
+      "continues": 0,
+      "frames": 1776,
+      "waiting_frames": 55,
+      "jump_release_frames": 0,
+      "airborne_frames": 1160,
+      "execution_intervals": 0,
+      "not_applicable_decisions": 0,
+      "stale_responses": 0,
+      "discarded_responses": 1,
+      "cancelled_requests": 0,
+      "retried_requests": 0,
+      "errors": 0,
+      "late_choices": 0,
+      "prediction_mismatches": 0,
+      "resyncs": 0,
+      "speculation_hits": 0,
+      "speculation_misses": 0,
+      "unused_speculative_requests": 0,
+      "unused_speculative_answers": 0,
+      "unused_speculative_failures": 0,
+      "hedge_losers": 62,
+      "hedged_answers": 62,
+      "unused_cost_unknown": 0,
+      "wall_seconds": 29.589670800007298,
+      "requests_per_second": 2.2305080866254086,
+      "decisions_per_second": 2.2305080866254086,
+      "moves_per_second": 2.1967125095553266,
+      "effective_fps": 60.02094487646554,
+      "timings": {
+        "request_seconds": {
+          "samples": 66,
+          "median": 0.2062468500007526,
+          "p95": 0.2240717999957269
+        },
+        "preparation_seconds": {
+          "samples": 66,
+          "median": 0.22764140000072075,
+          "p95": 0.3111042000091402
+        },
+        "dispatch_seconds": {
+          "samples": 0,
+          "median": null,
+          "p95": null
+        },
+        "polling_seconds": {
+          "samples": 0,
+          "median": null,
+          "p95": null
+        },
+        "observation_age_seconds": {
+          "samples": 0,
+          "median": null,
+          "p95": null
+        },
+        "observation_age_frames": {
+          "samples": 0,
+          "median": null,
+          "p95": null
+        },
+        "observation_to_first_frame_seconds": {
+          "samples": 0,
+          "median": null,
+          "p95": null
+        },
+        "observation_to_last_frame_seconds": {
+          "samples": 0,
+          "median": null,
+          "p95": null
+        },
+        "projection_seconds": {
+          "samples": 66,
+          "median": 5.999994755256921e-06,
+          "p95": 8.899995009414852e-06
+        },
+        "late_frames": {
+          "samples": 65,
+          "median": 0,
+          "p95": 0
+        }
+      },
+      "known_cost": 0.013443443999999999,
+      "cost_known_requests": 66,
+      "cost_missing_received_requests": 0
+    },
+    {
+      "episode": 5,
+      "reason": "death",
+      "started_at": 74311.786735,
+      "ended_at": 74334.7759909,
+      "reward": 2347.0,
+      "initial_x_pos": 40,
+      "x_pos": 2469,
+      "max_x_pos": 2469,
+      "terminated": true,
+      "truncated": false,
+      "death": true,
+      "completed": false,
+      "speculative_width": 0,
+      "requests": 50,
+      "decisions": 50,
+      "moves": 49,
+      "continues": 0,
+      "frames": 1380,
+      "waiting_frames": 53,
+      "jump_release_frames": 0,
+      "airborne_frames": 805,
+      "execution_intervals": 0,
+      "not_applicable_decisions": 0,
+      "stale_responses": 0,
+      "discarded_responses": 1,
+      "cancelled_requests": 0,
+      "retried_requests": 0,
+      "errors": 0,
+      "late_choices": 0,
+      "prediction_mismatches": 0,
+      "resyncs": 0,
+      "speculation_hits": 0,
+      "speculation_misses": 0,
+      "unused_speculative_requests": 0,
+      "unused_speculative_answers": 0,
+      "unused_speculative_failures": 0,
+      "hedge_losers": 49,
+      "hedged_answers": 49,
+      "unused_cost_unknown": 0,
+      "wall_seconds": 22.98925589999999,
+      "requests_per_second": 2.1749290284771687,
+      "decisions_per_second": 2.1749290284771687,
+      "moves_per_second": 2.1314304479076256,
+      "effective_fps": 60.02804118596986,
+      "timings": {
+        "request_seconds": {
+          "samples": 50,
+          "median": 0.2095162499899743,
+          "p95": 0.23120639999979176
+        },
+        "preparation_seconds": {
+          "samples": 50,
+          "median": 0.23204775000340305,
+          "p95": 0.3537674999970477
+        },
+        "dispatch_seconds": {
+          "samples": 0,
+          "median": null,
+          "p95": null
+        },
+        "polling_seconds": {
+          "samples": 0,
+          "median": null,
+          "p95": null
+        },
+        "observation_age_seconds": {
+          "samples": 0,
+          "median": null,
+          "p95": null
+        },
+        "observation_age_frames": {
+          "samples": 0,
+          "median": null,
+          "p95": null
+        },
+        "observation_to_first_frame_seconds": {
+          "samples": 0,
+          "median": null,
+          "p95": null
+        },
+        "observation_to_last_frame_seconds": {
+          "samples": 0,
+          "median": null,
+          "p95": null
+        },
+        "projection_seconds": {
+          "samples": 50,
+          "median": 5.449997843243182e-06,
+          "p95": 9.700001101009548e-06
+        },
+        "late_frames": {
+          "samples": 49,
+          "median": 0,
+          "p95": 0
+        }
+      },
+      "known_cost": 0.010362996000000001,
+      "cost_known_requests": 50,
+      "cost_missing_received_requests": 0
+    }
+  ],
+  "completed_episodes": 1,
+  "deaths": 4,
+  "max_x_pos": 3161
+}

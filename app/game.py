@@ -10,7 +10,7 @@ from nes_py.wrappers import JoypadSpace
 
 from app.config import ENVIRONMENT_ID
 from app.contracts import Action, BUTTONS, Observation, StepResult
-from app.scene import PLAYER_FLOAT, read_scene
+from app.scene import PLAYER_FLOAT, read_scene, read_speed
 
 
 def require_frames(frames: int) -> None:
@@ -75,6 +75,37 @@ class MarioGame:
         except BaseException:
             self._ready = False
             raise
+
+    def snapshot(self) -> Any:
+        """Opaque native emulator state, loadable into another MarioGame of the same ROM."""
+        if self._closed or not self._ready:
+            raise RuntimeError("eseguire reset prima di uno snapshot")
+        return self._env.unwrapped.dump_state()
+
+    def simulate(self, snapshot: Any, actions: list[Action]) -> tuple[Observation, list[dict], Any]:
+        """Play actions from a snapshot of another game; return the reached observation, per-frame
+        ground and speed, and the snapshot of the reached state.
+
+        Each frame runs the backend's step hooks (skipped area changes and busy states) like
+        step, without reward bookkeeping or the episode limit, so this instance serves as a
+        disposable shadow emulator. Stops early at death or at the flag. The native emulator
+        releases the GIL, so a shadow can run beside the real game.
+        """
+        if self._closed:
+            raise RuntimeError("il gioco è chiuso")
+        unwrapped = self._env.unwrapped
+        unwrapped.load_state(snapshot)
+        ram = unwrapped.ram
+        frames = []
+        for action in actions:
+            unwrapped._frame_advance(self._env._action_map[self._actions.index(Action(action))])
+            frames.append({"on_ground": bool(ram[PLAYER_FLOAT] == 0), "speed": read_speed(bytes(ram[:0x60]))})
+            if unwrapped._is_dying or unwrapped._is_dead or unwrapped._flag_get:
+                break
+            unwrapped._did_step(False)
+        info = unwrapped._get_info()
+        info["death"] = bool(info.get("is_dying") or info.get("is_dead"))
+        return self._observation(unwrapped.screen, info), frames, unwrapped.dump_state()
 
     def close(self) -> None:
         if not self._closed:

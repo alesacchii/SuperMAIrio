@@ -108,7 +108,7 @@ class TimedControlTests(unittest.TestCase):
                     "usage": {"cost": 0.25, "input_tokens": 10}}
 
         client = Client("key", 10)
-        payload = client.build_request(obs, b"png", frames=0, control_context=context).payload
+        payload = client.build_request(obs, encode_png(obs), frames=0, control_context=context).payload
         decision = asyncio.run(client.decide(payload))
         self.assertEqual([list(sent["questions"]) for sent in client.sent], [["buttons"], ["frames"]])
         self.assertEqual(set(client.sent[1]["questions"]["frames"]), {"type", "instructions", "criteria"})

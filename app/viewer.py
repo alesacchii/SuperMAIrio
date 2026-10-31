@@ -8,7 +8,8 @@ from app.contracts import Action, Observation, keyboard_action
 
 class GameWindow:
     def __init__(self):
-        self.window = pyglet.window.Window(width=768, height=720, caption="SuperMAIrio — livello 1-1")
+        # Without vsync a flip takes 2 ms instead of 12: the game loop keeps its 60 FPS and its polling.
+        self.window = pyglet.window.Window(width=768, height=720, caption="SuperMAIrio — livello 1-1", vsync=False)
         self.open = True
         self.reset_requested = False
         self._pressed: set[int] = set()

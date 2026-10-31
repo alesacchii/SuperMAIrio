@@ -1,10 +1,12 @@
+from dataclasses import replace
 import unittest
 from itertools import product
 from unittest.mock import patch
 
 import numpy as np
 
-from app.config import Config, parse_config
+from app.config import (BEST_CHOICE_PREVIEW, BEST_EXECUTION_MODE, BEST_PARALLEL_REQUESTS, Config,
+    parse_config)
 from app.contracts import Action, BUTTONS, keyboard_action
 from app.game import MarioGame
 from app.moves import MOVES
@@ -129,7 +131,8 @@ class GameContractTests(unittest.TestCase):
 
     @patch.dict("app.config.os.environ", {"OPENROUTER_MODEL": Config().model})
     def test_configuration(self):
-        self.assertEqual(parse_config([]), Config())
+        self.assertEqual(parse_config([]), replace(Config(), execution_mode=BEST_EXECUTION_MODE,
+            choice_preview=BEST_CHOICE_PREVIEW, parallel_requests=BEST_PARALLEL_REQUESTS, image=False))
         for args in (["--mode", "manual", "--headless"], ["--episodes", "0"],
                      ["--max-frames", "-2"], ["--game-fps", "1.5"]):
             with self.subTest(args=args), self.assertRaises(SystemExit), patch("sys.stderr"):

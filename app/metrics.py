@@ -24,7 +24,8 @@ class Metrics:
         self.counts = Counter()
         self.samples = {name: [] for name in ("request_seconds", "preparation_seconds", "dispatch_seconds",
             "polling_seconds", "observation_age_seconds", "observation_age_frames",
-            "observation_to_first_frame_seconds", "observation_to_last_frame_seconds")}
+            "observation_to_first_frame_seconds", "observation_to_last_frame_seconds",
+            "projection_seconds", "late_frames")}
         self.known_cost = 0.0
         self.cost_known_requests = 0
 
@@ -38,6 +39,16 @@ class Metrics:
             self.known_cost += cost
             self.cost_known_requests += 1
 
+    def unused(self, decision, kind):
+        """An answer that controls nothing (a losing parallel copy or an unused speculative branch);
+        its cost is still spent."""
+        self.counts[kind] += 1
+        cost = (decision.usage or {}).get("cost")
+        if numeric(cost) and cost >= 0:
+            self.known_cost += cost
+        else:
+            self.counts["unused_cost_unknown"] += 1
+
     def merge(self, other):
         self.counts.update(other.counts)
         for name in self.samples:
@@ -49,7 +60,9 @@ class Metrics:
         counts = {name: self.counts[name] for name in ("requests", "decisions", "moves", "continues",
             "frames", "waiting_frames", "jump_release_frames", "airborne_frames", "execution_intervals",
             "not_applicable_decisions", "stale_responses", "discarded_responses", "cancelled_requests",
-            "retried_requests", "errors")}
+            "retried_requests", "errors", "late_choices", "prediction_mismatches", "resyncs", "speculation_hits", "speculation_misses",
+            "unused_speculative_requests", "unused_speculative_answers", "unused_speculative_failures",
+            "hedge_losers", "hedged_answers", "unused_cost_unknown")}
         return {**counts, "wall_seconds": seconds,
             "requests_per_second": counts["requests"] / seconds if seconds > 0 else None,
             "decisions_per_second": counts["decisions"] / seconds if seconds > 0 else None,

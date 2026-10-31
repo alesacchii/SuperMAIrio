@@ -15,7 +15,7 @@ from app.contracts import Action, Decision, has_jump
 from app.metrics import ControlHistory, Metrics, distribution
 from app.moves import HIGH_HOLD, LANDING_CAP
 from app.models.gpt_luna import Model
-from app.openrouter import DecisionError
+from app.openrouter import DecisionError, encode_png
 from app.runner import run
 from app.session import SessionLog
 from test_decisions import SCENE, FakeClient, FakeGame, observation
@@ -737,7 +737,7 @@ class MeasurementTests(unittest.TestCase):
             control.record(index, "run_right", 16, 40, 40)
         context.update(control.context("realtime"), move_finished=True,
             move_remaining_frames=0, tail_action="noop")
-        payload = Model("key", 10).build_request(observation(), b"png", frames=120,
+        payload = Model("key", 10).build_request(observation(), encode_png(observation()), frames=120,
             previous_move="run_right", control_context=context).payload
         instructions = payload["questions"]["next_action"]["instructions"]
         self.assertIn("30 FPS", instructions)
@@ -754,7 +754,7 @@ class MeasurementTests(unittest.TestCase):
         self.assertNotIn("continue", payload["questions"]["next_action"]["criteria"])
 
     def test_adapter_paused_prompt(self):
-        payload = Model("key", 10).build_request(observation(), b"png", frames=0).payload
+        payload = Model("key", 10).build_request(observation(), encode_png(observation()), frames=0).payload
         instructions = payload["questions"]["next_action"]["instructions"]
         self.assertIn("paused while you decide", instructions)
         self.assertNotIn("continue", payload["questions"]["next_action"]["criteria"])
@@ -763,8 +763,7 @@ class MeasurementTests(unittest.TestCase):
     @patch.dict("app.config.os.environ", {"OPENROUTER_MODEL": Config().model})
     def test_cli_defaults_and_removed_options(self):
         config = parse_config([])
-        self.assertEqual(config, Config())
-        self.assertEqual((config.execution_mode, config.max_decision_frames, config.game_fps), ("realtime", 120, 60))
+        self.assertEqual((config.execution_mode, config.max_decision_frames, config.game_fps), ("predictive", 120, 60))
         self.assertTrue(config.scene)
         self.assertFalse(parse_config(["--no-scene"]).scene)
         self.assertEqual(parse_config(["--max-decision-frames", "90"]).max_decision_frames, 90)

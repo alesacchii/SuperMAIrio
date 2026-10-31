@@ -9,18 +9,29 @@ nuova osservazione. Si misurano qualità del controllo, latenza, frequenza delle
 decisioni, affidabilità e costo, mantenendo confrontabili le condizioni delle prove.
 
 Il backend attuale esegue `SuperMarioBros-1-1-v0`. Sono implementate le modalità
-`model` (predefinita), `demo` e `manual`. Il primo adapter è GPT Luna,
-`openai/gpt-6-luna-decisions`, tramite la Decisions API OpenRouter e una domanda
-`choice` sulle mosse del catalogo (`app/moves.py`) più `continue`. Altri modelli e confronti descritti nel README
-possono essere obiettivi futuri: verificarne la presenza nel codice prima di
-considerarli implementati. La demo verifica il controllo dei comandi; non è una
-strategia che garantisce il completamento del livello.
+`model` (predefinita), `demo` e `manual`. I modelli `decider` (predefinito), `d1`,
+`gpt_luna` e `jev` usano la Decisions API OpenRouter con una domanda `choice`.
+`uv run main.py` usa la configurazione delle vittorie (`BEST_*` in `app/config.py`),
+applicata da `parse_config`; `Config()` mantiene i default statici usati dai test.
+Il README è la vetrina del progetto; le specifiche sono in `docs/`, e
+`docs/storia.md` racconta anche piani e revisioni superati: verificare nel codice
+prima di considerarli implementati. La demo verifica il controllo dei comandi; non
+è una strategia che garantisce il completamento del livello.
+
+Dal 30 ottobre 2026 `--execution-mode predictive` (`app/predictive.py`) ha fatto
+completare 1-1 a 60 FPS a decider, d1, Luna e Jev (`docs/benchmark-2026-10-30.md`).
+Vincoli attuali indicati dall'utente: **ogni input è scelto dal modello** (nessuna
+mossa automatica del programma) e **il contesto è identico per tutti i modelli**
+(stesso stato, istruzioni, scelte, anteprime e immagine; cambia solo l'identificativo).
+Gli altri vincoli storici elencati sotto valgono per le modalità `realtime`,
+`paused` e `moves`, non per `predictive`.
 
 ## File da leggere all'inizio
 
-1. `README.md`: obiettivi scientifici, avvio, protocollo, modalità di esecuzione,
-   definizioni delle metriche e risultati sperimentali. Alcune sezioni raccontano
-   fasi precedenti: per il comportamento attuale confrontarle con codice e test.
+1. `README.md` per risultati e avvio, poi secondo il compito `docs/cli.md`,
+   `docs/come-funziona.md`, `docs/protocolli.md`, `docs/risultati-e-metriche.md`,
+   `docs/aggiungere-un-modello.md` e `docs/sviluppo.md`. Per il comportamento attuale
+   confrontarli con codice e test.
 2. `pyproject.toml` e `.python-version`: versione Python, dipendenze e override uv.
    Consultare `uv.lock` quando si interviene sulle dipendenze.
 3. `app/contracts.py`: contratti condivisi (`Action`, `Observation`, `Decision`,
@@ -47,7 +58,8 @@ Leggere poi i moduli e i test pertinenti alla richiesta, seguendo questa mappa.
 | Protocollo HTTP, validazione, timeout e worker asincrono | `app/openrouter.py`, `app/contracts.py` | `tests/test_decisions.py` |
 | Prompt, immagini, contesto e nuovi modelli | `app/models/gpt_luna.py`, `app/models/__init__.py`, `app/contracts.py`, `app/moves.py` | `tests/test_models.py`, `tests/test_decisions.py`, `tests/test_realtime.py` |
 | Log, metriche, costi e rilevamento del mancato progresso | `app/session.py`, `app/metrics.py`, `app/model_runner.py` | `tests/test_realtime.py`, `tests/test_decisions.py` |
-| Verifica del provider reale | `tests/test_openrouter_live.py`, `.env.example`, sezione Verifiche del README | Test live esplicitamente attivati |
+| Modalità predittiva: emulatore ombra, anteprime, copie parallele, speculazione | `app/predictive.py`, `app/game.py` (`snapshot`, `simulate`), `app/control.py` (`PREDICTIVE_MOVES`, `choice_frames`), `app/openrouter.py` (`submit(copies=...)`) | `tests/test_predictive.py` |
+| Verifica del provider reale | `tests/test_openrouter_live.py`, `.env.example`, `docs/sviluppo.md` | Test live esplicitamente attivati |
 
 ## Ambiente e comandi
 
@@ -150,7 +162,9 @@ nello stesso timeout, e unisce le risposte in una mossa come `right_run_jump_28`
 Con A le durate sono 2/4/8/16/28 frame, senza A 2/4/8. Nessun rilascio automatico,
 nessun fronte di A aggiunto. In realtime, alla fine della durata, si rilasciano i pulsanti.
 In realtime l'adapter usa una sola domanda con tutte le combinazioni (latenza dimezzata).
-`--no-image` passa `png=None` agli adapter, che devono omettere l'immagine (Jev senza padding).
+`--no-image` passa `png=None` agli adapter, che devono omettere l'immagine.
+Il bordo nero fino a 280×280 (minimo di Jev) è applicato da `ChoiceModel` a tutti i
+modelli, con la stessa frase: non reintrodurre differenze di contesto per modello.
 Il testo del prompt a turni è quello della vittoria: piccole modifiche hanno cambiato
 l'esito di decider, quindi rimisurare prima di ritoccarlo. Benchmark in `docs/benchmark-2026-10-29.md`.
 Protocollo `choice-timed-buttons-v1`, prompt `timed` revisione 1; test in
@@ -160,9 +174,8 @@ Non inserire i pulsanti scelti nelle istruzioni della seconda domanda: con
 Luna e Jev estendono entrambi `app/models/_choice.py::ChoiceModel`; usare questa
 base condivisa per altri modelli con lo stesso protocollo multimodale Choice.
 Anche `decider` (`perplexity/pplx-decider-v1.2`) usa questa base e ha superato
-la verifica live delle immagini; non ha ancora completato il livello.
-Anche `d1` (`liquid/d1.1`) usa questa base senza modifiche; il supporto alle
-immagini non è ancora verificato live e non ci sono risultati.
+la verifica live delle immagini. Anche `d1` (`liquid/d1.1`) usa questa base senza
+modifiche; il supporto alle immagini non è ancora verificato live.
 
 Ogni modulo pubblico `app/models/<nome>.py` deve esportare una classe `Model`
 con `model_id` univoco, costruttore `(api_key, timeout)`, `build_request(...)`
@@ -178,6 +191,27 @@ Per lo stesso protocollo multimodale Choice si può estendere l'adapter GPT Luna
 cambiando `model_id`; verificare il supporto del nuovo modello al protocollo
 e agli input immagine. Tenere i dettagli specifici nell'adapter, il trasporto
 in `app/openrouter.py` e l'orchestrazione in `app/model_runner.py`.
+
+### Modalità predittiva
+
+`run_predictive` sostituisce `run_model` quando `execution_mode == "predictive"`
+(richiede `--control-mode buttons`). Il gioco non si ferma; l'emulatore ombra
+(`MarioGame.simulate`, thread `ShadowPool`) proietta i pulsanti già scelti fino al
+frame in cui la prossima scelta si applica, e il modello riceve quello stato.
+Risposte in anticipo aspettano il loro frame, quelle in ritardo si applicano subito
+e provocano un `resync`. Le scelte di `PREDICTIVE_MOVES` sono sequenze fisse scelte
+dal modello (`choice_frames`): il frame senza A all'inizio di un salto a terra con A
+già premuto e i prefissi di `*_hop` e `right_run_then_jump` fanno parte della scelta.
+`--choice-preview` scrive l'esito emulato in fondo alla descrizione di ogni opzione:
+informazione, mai una scelta o un filtro. Ogni opzione in più costa un'anteprima per
+richiesta e allunga la cadenza: misurare prima di ampliare il catalogo.
+Lo snapshot nativo non trasferisce tutto lo stato fra istanze (byte `0x705`): rari
+scarti di 1–2 px sono attesi e rilevati come `prediction_mismatch`.
+Il prompt predittivo è condiviso (`PREDICTED_TIMING`, `HOLD_PREDICTED`, `PREVIEW`,
+`RUN_UP`); non modificare `GUIDE`, usato anche dal prompt `timed` a turni.
+La finestra usa `vsync=False`: con il vsync ogni frame blocca il ciclo per 12 ms e
+le partite con finestra scendono a 52 FPS. `scripts/replay_gif.py` rigioca una
+sessione da `frames.jsonl` per rigenerare `docs/assets/decider-1-1.gif`.
 
 ## Risultati, credenziali e metodo di lavoro
 
@@ -202,7 +236,7 @@ in `app/openrouter.py` e l'orchestrazione in `app/model_runner.py`.
 - Seguire lo stile Python esistente e mantenere separati contratti, emulatore,
   interfaccia, adapter, trasporto e misure. Evitare refactoring estranei al compito.
 - Per modifiche funzionali eseguire i test pertinenti, poi la suite standard
-  quando appropriato. Aggiornare il README se cambiano CLI, protocollo,
+  quando appropriato. Aggiornare README e `docs/` se cambiano CLI, protocollo,
   comportamento del controllo o significato dei risultati. Riportare le
   verifiche eseguite e gli eventuali limiti senza attribuire risultati simulati
   al provider reale.
