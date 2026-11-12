@@ -44,9 +44,9 @@ OPENROUTER_MODEL=typesafe/jev-1.14
 ```
 
 Precedenza: `--model` > `OPENROUTER_MODEL` nell'ambiente > `.env` > `decider`.
-Sono accettati gli alias `decider`, `d1`, `gpt_luna` e `jev` oppure i rispettivi
+Sono accettati gli alias `decider`, `d1`, `gemini_decision`, `gpt_luna` e `jev` oppure i rispettivi
 identificativi OpenRouter (`perplexity/pplx-decider-v1.2`, `liquid/d1.1`,
-`openai/gpt-6-luna-decisions`, `typesafe/jev-1.14`), elencati anche in
+`google/gemini-decision-1`, `openai/gpt-6-luna-decisions`, `typesafe/jev-1.14`), elencati anche in
 `.env.example`. Un identificativo sconosciuto viene rifiutato prima di aprire il
 gioco. Le istanze `Config()` create direttamente in Python mantengono i default
 statici (`realtime`, screenshot attivi, nessuna anteprima); la configurazione
@@ -158,7 +158,7 @@ modalità scelta vengono rifiutate prima di aprire il gioco.
 
 | Opzione | Default | Effetto |
 | --- | --- | --- |
-| `--model NOME` | `OPENROUTER_MODEL` oppure `decider` | Alias (`decider`, `d1`, `gpt_luna`, `jev`) o identificativo OpenRouter |
+| `--model NOME` | `OPENROUTER_MODEL` oppure `decider` | Alias (`decider`, `d1`, `gemini_decision`, `gpt_luna`, `jev`) o identificativo OpenRouter |
 | `--request-timeout S` | `10` | Tempo massimo per una richiesta intera (connessione, invio e risposta, anche con due domande in sequenza) |
 | `--execution-mode {realtime,paused,predictive}` | `predictive` (`realtime` con `--control-mode timed` o `moves`) | Vedi [Quando sceglie](come-funziona.md#quando-sceglie-le-modalità-di-esecuzione---execution-mode) |
 | `--control-mode {buttons,timed,moves}` | `buttons` | Vedi [Che cosa può scegliere](come-funziona.md#che-cosa-può-scegliere-i-protocolli-di-controllo---control-mode). `predictive` richiede `buttons` e usa il proprio catalogo |

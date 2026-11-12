@@ -21,10 +21,25 @@ from app.models.gpt_luna import MODEL_ID, Model
 from app.models.jev import MODEL_ID as JEV_MODEL_ID, Model as JevModel
 from app.models.decider import MODEL_ID as DECIDER_MODEL_ID, Model as DeciderModel
 from app.models.d1 import MODEL_ID as D1_MODEL_ID, Model as D1Model
+from app.models.gemini_decision import MODEL_ID as GEMINI_MODEL_ID, Model as GeminiModel
 from app.openrouter import ENDPOINT, OpenRouterClient, encode_png
 
 
 class ModelTests(unittest.TestCase):
+    def test_gemini_uses_shared_protocol_without_model_specific_controls(self):
+        self.assertEqual(GEMINI_MODEL_ID, "google/gemini-decision-1")
+        self.assertIs(get_model_class("gemini_decision"), GeminiModel)
+        self.assertIs(get_model_class(GEMINI_MODEL_ID), GeminiModel)
+        self.assertEqual(parse_config(["--model", "gemini_decision"]).model, "gemini_decision")
+        obs = Observation(np.zeros((240, 256, 3), dtype=np.uint8), {"x_pos": 40})
+        for context in ({"execution_mode": "predictive", "control_mode": "buttons", "decision_frames": 33},
+                        {"execution_mode": "realtime", "control_mode": "buttons"}):
+            with self.subTest(context=context):
+                gemini = GeminiModel("test-key", 10).build_request(obs, encode_png(obs), frames=0, control_context=context)
+                luna = Model("test-key", 10).build_request(obs, encode_png(obs), frames=0, control_context=context)
+                self.assertEqual(gemini.payload, {**luna.payload, "model": GEMINI_MODEL_ID})
+                self.assertEqual(gemini.trace, luna.trace)
+
     def test_decider_uses_shared_protocol_without_model_specific_controls(self):
         self.assertIs(get_model_class("decider"), DeciderModel)
         self.assertIs(get_model_class(DECIDER_MODEL_ID), DeciderModel)
