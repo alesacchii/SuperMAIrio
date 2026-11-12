@@ -32,25 +32,24 @@ modello.
 
 | Modello | Vittorie | Latenza mediana | Una scelta ogni | Costo medio a partita | Costo per vittoria |
 | --- | ---: | ---: | ---: | ---: | ---: |
-| **`decider`** (default) | **17/20** | 0,30 s | 42–49 frame | **0,0041 $** | 0,0048 $ |
-| `d1` | 3/5 | 0,23 s | 40 frame | 0,0056 $ | 0,0093 $ |
-| `gpt_luna` | 2/3 | 0,43 s | 60 frame | 0,0242 $ | 0,0363 $ |
-| `jev` | 1/5 | 0,21 s | 36 frame | 0,0070 $ | 0,0350 $ |
-| `gemini_decision` | 0/10 | 0,23 s | 28 frame | 0,0099 $ | — |
-| `joey` | 1/10 | 0,24 s | 28 frame | 0,00075 $ | 0,0075 $ |
+| **`decider`** (default) | **8/10** | 0,357 s | 35 frame | 0,00368 $ | 0,00460 $ |
+| `d1` | 5/10 | 0,288 s | 33 frame | 0,00430 $ | 0,00861 $ |
+| `jev` | 3/10 | 0,211 s | 25 frame | 0,00980 $ | 0,03268 $ |
+| `gemini_decision` | 1/10 | 0,359 s | 35 frame | 0,00755 $ | 0,07546 $ |
+| `joey` | 0/10 | 0,243 s | 28 frame | 0,00073 $ | — |
+| `decider_flash` | 0/10 | 0,215 s | 25 frame | 0,00335 $ | — |
+| `gpt_luna` | non valutato | — | — | — | — |
 
-Per `decider` il dato somma le due sessioni da 10 partite (8/10 e 9/10). Gli altri
-modelli hanno meno partite: il confronto fra loro è indicativo. Gemini è stato
-provato il 12 novembre, come Joey: dettagli e limiti nei benchmark di
-[Gemini](docs/benchmark-2026-11-12.md) e [Joey](docs/benchmark-joey-2026-11-12.md).
-La prova di Joey ha rilevato throughput iniziale basso e va interpretata con cautela.
-Metodo, sessioni e
-limiti sono nel [benchmark del 30 ottobre](docs/benchmark-2026-10-30.md); i dati
-grezzi sono in [docs/benchmark-data/](docs/benchmark-data/2026-10-30/).
+Nuovo giro del 12 novembre: 10 partite per ogni modello con sessione completata.
+Luna si è interrotto tre volte con HTTP 502 e non ha completato episodi; non è
+classificato. Il throughput iniziale di d1 era sotto la soglia consigliata: il
+confronto è indicativo. Metodo, dati, costi noti e limiti sono nel
+[benchmark completo](docs/benchmark-uniforme-2026-11-12.md); le prove precedenti
+restano nel [benchmark del 30 ottobre](docs/benchmark-2026-10-30.md).
 
 | Configurazione | Risultato in 1-1 |
 | --- | --- |
-| **Modalità predittiva, 60 FPS** (default) | **Vince**: decider 17/20 |
+| **Modalità predittiva, 60 FPS** (default) | **Vince**: decider 8/10 nel nuovo giro |
 | A turni, gioco fermo durante la decisione | Solo decider vince, sempre allo stesso modo |
 | Tempo reale, 60 FPS, nessuna previsione | 0 vittorie in 120 partite ([benchmark del 29 ottobre](docs/benchmark-2026-10-29.md)) |
 
@@ -76,7 +75,7 @@ cartella dei risultati.
 
 ```powershell
 uv run main.py --episodes 10 --headless   # Benchmark: 10 partite, senza finestra
-uv run main.py --model joey               # Altri modelli: d1, gemini_decision, gpt_luna, jev
+uv run main.py --model decider_flash      # Altri modelli: d1, gemini_decision, gpt_luna, jev, joey
 uv run main.py --mode manual              # Giocare da tastiera, senza chiave
 uv run main.py --mode demo                # Verificare i comandi, senza chiave
 ```

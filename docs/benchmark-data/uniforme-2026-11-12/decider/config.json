@@ -1,0 +1,115 @@
+{
+  "mode": "model",
+  "headless": true,
+  "seed": 123,
+  "episodes": 10,
+  "max_frames": 3600,
+  "model": "decider",
+  "request_timeout": 10.0,
+  "execution_mode": "predictive",
+  "max_decision_frames": 120,
+  "max_episode_seconds": 60.0,
+  "save_screenshots": false,
+  "game_fps": 60,
+  "scene": true,
+  "image": false,
+  "control_mode": "buttons",
+  "decision_frames": 0,
+  "parallel_requests": 2,
+  "speculative_width": 0,
+  "choice_preview": 30,
+  "results_version": 6,
+  "prompt_revision": 1,
+  "protocol": "choice-buttons-predictive-v1",
+  "game_paused_during_request": false,
+  "fps_target": 60,
+  "clock": "perf_counter",
+  "percentile_method": "nearest-rank",
+  "moves": {
+    "noop": [
+      {
+        "action": "noop",
+        "frames": 1,
+        "until_landed": false
+      }
+    ],
+    "left": [
+      {
+        "action": "left",
+        "frames": 1,
+        "until_landed": false
+      }
+    ],
+    "left_run": [
+      {
+        "action": "left_run",
+        "frames": 1,
+        "until_landed": false
+      }
+    ],
+    "right": [
+      {
+        "action": "right",
+        "frames": 1,
+        "until_landed": false
+      }
+    ],
+    "right_jump": [
+      {
+        "action": "right_jump",
+        "frames": 1,
+        "until_landed": false
+      }
+    ],
+    "right_run": [
+      {
+        "action": "right_run",
+        "frames": 1,
+        "until_landed": false
+      }
+    ],
+    "right_run_jump": [
+      {
+        "action": "right_run_jump",
+        "frames": 1,
+        "until_landed": false
+      }
+    ],
+    "right_hop": [
+      {
+        "action": "right_jump",
+        "frames": 8,
+        "until_landed": false
+      },
+      {
+        "action": "noop",
+        "frames": 1,
+        "until_landed": false
+      }
+    ],
+    "right_run_hop": [
+      {
+        "action": "right_run_jump",
+        "frames": 8,
+        "until_landed": false
+      },
+      {
+        "action": "noop",
+        "frames": 1,
+        "until_landed": false
+      }
+    ],
+    "right_run_then_jump": [
+      {
+        "action": "right_run",
+        "frames": 4,
+        "until_landed": false
+      },
+      {
+        "action": "right_run_jump",
+        "frames": 1,
+        "until_landed": false
+      }
+    ]
+  }
+}

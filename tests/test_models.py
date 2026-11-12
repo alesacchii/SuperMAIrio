@@ -20,6 +20,7 @@ from app.models import get_model_class, load_model
 from app.models.gpt_luna import MODEL_ID, Model
 from app.models.jev import MODEL_ID as JEV_MODEL_ID, Model as JevModel
 from app.models.decider import MODEL_ID as DECIDER_MODEL_ID, Model as DeciderModel
+from app.models.decider_flash import MODEL_ID as FLASH_MODEL_ID, Model as FlashModel
 from app.models.d1 import MODEL_ID as D1_MODEL_ID, Model as D1Model
 from app.models.gemini_decision import MODEL_ID as GEMINI_MODEL_ID, Model as GeminiModel
 from app.models.joey import MODEL_ID as JOEY_MODEL_ID, Model as JoeyModel
@@ -27,6 +28,21 @@ from app.openrouter import ENDPOINT, OpenRouterClient, encode_png
 
 
 class ModelTests(unittest.TestCase):
+    def test_decider_flash_uses_shared_protocol_without_model_specific_controls(self):
+        self.assertEqual(FLASH_MODEL_ID, "perplexity/pplx-decider-flash-v1.2")
+        self.assertIs(get_model_class("decider_flash"), FlashModel)
+        self.assertIs(get_model_class(FLASH_MODEL_ID), FlashModel)
+        self.assertEqual(parse_config(["--model", "decider_flash"]).model, "decider_flash")
+        obs = Observation(np.zeros((240, 256, 3), dtype=np.uint8), {"x_pos": 40})
+        for png in (None, encode_png(obs)):
+            for context in ({"execution_mode": "predictive", "control_mode": "buttons", "decision_frames": 33},
+                            {"execution_mode": "realtime", "control_mode": "buttons"}):
+                with self.subTest(image=png is not None, context=context):
+                    flash = FlashModel("test-key", 10).build_request(obs, png, frames=0, control_context=context)
+                    decider = DeciderModel("test-key", 10).build_request(obs, png, frames=0, control_context=context)
+                    self.assertEqual(flash.payload, {**decider.payload, "model": FLASH_MODEL_ID})
+                    self.assertEqual(flash.trace, decider.trace)
+
     def test_joey_uses_shared_protocol_without_model_specific_controls(self):
         self.assertEqual(JOEY_MODEL_ID, "baseten/joey-1")
         self.assertIs(get_model_class("joey"), JoeyModel)

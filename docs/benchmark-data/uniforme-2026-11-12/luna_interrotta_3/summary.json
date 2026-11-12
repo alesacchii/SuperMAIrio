@@ -1,0 +1,95 @@
+{
+  "results_version": 6,
+  "status": "error",
+  "execution_mode": "predictive",
+  "requests": 0,
+  "decisions": 0,
+  "moves": 0,
+  "continues": 0,
+  "frames": 0,
+  "waiting_frames": 0,
+  "jump_release_frames": 0,
+  "airborne_frames": 0,
+  "execution_intervals": 0,
+  "not_applicable_decisions": 0,
+  "stale_responses": 0,
+  "discarded_responses": 0,
+  "cancelled_requests": 0,
+  "retried_requests": 0,
+  "errors": 0,
+  "late_choices": 0,
+  "prediction_mismatches": 0,
+  "resyncs": 0,
+  "speculation_hits": 0,
+  "speculation_misses": 0,
+  "unused_speculative_requests": 0,
+  "unused_speculative_answers": 0,
+  "unused_speculative_failures": 0,
+  "hedge_losers": 0,
+  "hedged_answers": 0,
+  "unused_cost_unknown": 0,
+  "wall_seconds": 0.0,
+  "requests_per_second": null,
+  "decisions_per_second": null,
+  "moves_per_second": null,
+  "effective_fps": null,
+  "timings": {
+    "request_seconds": {
+      "samples": 0,
+      "median": null,
+      "p95": null
+    },
+    "preparation_seconds": {
+      "samples": 0,
+      "median": null,
+      "p95": null
+    },
+    "dispatch_seconds": {
+      "samples": 0,
+      "median": null,
+      "p95": null
+    },
+    "polling_seconds": {
+      "samples": 0,
+      "median": null,
+      "p95": null
+    },
+    "observation_age_seconds": {
+      "samples": 0,
+      "median": null,
+      "p95": null
+    },
+    "observation_age_frames": {
+      "samples": 0,
+      "median": null,
+      "p95": null
+    },
+    "observation_to_first_frame_seconds": {
+      "samples": 0,
+      "median": null,
+      "p95": null
+    },
+    "observation_to_last_frame_seconds": {
+      "samples": 0,
+      "median": null,
+      "p95": null
+    },
+    "projection_seconds": {
+      "samples": 0,
+      "median": null,
+      "p95": null
+    },
+    "late_frames": {
+      "samples": 0,
+      "median": null,
+      "p95": null
+    }
+  },
+  "known_cost": null,
+  "cost_known_requests": 0,
+  "cost_missing_received_requests": 0,
+  "episodes": [],
+  "completed_episodes": 0,
+  "deaths": 0,
+  "max_x_pos": null
+}
