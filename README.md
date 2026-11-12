@@ -37,10 +37,13 @@ modello.
 | `gpt_luna` | 2/3 | 0,43 s | 60 frame | 0,0242 $ | 0,0363 $ |
 | `jev` | 1/5 | 0,21 s | 36 frame | 0,0070 $ | 0,0350 $ |
 | `gemini_decision` | 0/10 | 0,23 s | 28 frame | 0,0099 $ | — |
+| `joey` | 1/10 | 0,24 s | 28 frame | 0,00075 $ | 0,0075 $ |
 
 Per `decider` il dato somma le due sessioni da 10 partite (8/10 e 9/10). Gli altri
 modelli hanno meno partite: il confronto fra loro è indicativo. Gemini è stato
-provato il 12 novembre: dettagli e limiti nel [suo benchmark](docs/benchmark-2026-11-12.md).
+provato il 12 novembre, come Joey: dettagli e limiti nei benchmark di
+[Gemini](docs/benchmark-2026-11-12.md) e [Joey](docs/benchmark-joey-2026-11-12.md).
+La prova di Joey ha rilevato throughput iniziale basso e va interpretata con cautela.
 Metodo, sessioni e
 limiti sono nel [benchmark del 30 ottobre](docs/benchmark-2026-10-30.md); i dati
 grezzi sono in [docs/benchmark-data/](docs/benchmark-data/2026-10-30/).
@@ -73,7 +76,7 @@ cartella dei risultati.
 
 ```powershell
 uv run main.py --episodes 10 --headless   # Benchmark: 10 partite, senza finestra
-uv run main.py --model gemini_decision    # Altri modelli: d1, gpt_luna, jev
+uv run main.py --model joey               # Altri modelli: d1, gemini_decision, gpt_luna, jev
 uv run main.py --mode manual              # Giocare da tastiera, senza chiave
 uv run main.py --mode demo                # Verificare i comandi, senza chiave
 ```
