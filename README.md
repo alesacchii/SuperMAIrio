@@ -6,6 +6,9 @@
 
 **A real-time benchmark for System 1 decision models, played on Super Mario Bros 1-1.**
 
+<p align="center"><img src="docs/assets/replay.gif" width="384" alt="perplexity/pplx-decider-v1.2 clears level 1-1 in 1,310 frames on the real-time track"></p>
+<p align="center"><sub>Fastest win of the 2026-11-13 edition: <code>perplexity/pplx-decider-v1.2</code>, real-time track, 1,310 frames. Replayed from the logged inputs.</sub></p>
+
 System 1 models answer in a single fast step: no chain of thought, one choice
 from a list. SuperMAIrio measures how well they control a game that does not
 wait for them. At 60 FPS a 300 ms answer costs 18 frames, so latency is as much
@@ -23,8 +26,8 @@ from the environment: there is no provider-specific code.
 | **Turn-based** | Buttons, then how many frames to hold them (two questions) | The game waits for both answers | 3,600 frames |
 
 Every participant gets the same instructions, the same state read from the NES
-RAM and the same options. Only the model ID changes. Each model plays 30
-finished games per track, scheduled in three alternating blocks. The leaderboard
+RAM and the same options. Only the model ID changes. Each model plays 10
+finished games per track (at most 13 starts). The leaderboard
 ranks wins with a 95% Wilson interval and reports latency, cost and
 interruptions next to them. [Rules and scoring](docs/benchmark.md).
 
@@ -35,6 +38,42 @@ flowchart LR
     P -->|HTTP POST| M[(Your model<br/>Decisions API)]
     M -->|one choice| G
 ```
+
+## Results: edition 2026-11-13
+
+Nine models served by the [OpenRouter](https://openrouter.ai) Decisions API,
+10 finished games per track. Full leaderboards, charts, every attempt and the
+logs for offline replay: [results/2026-11-13](results/2026-11-13/README.md).
+All 184 attempts pass `bench verify`.
+
+**Real-time track**
+
+| Rank | Model | Wins | 95% CI | Fastest win (frames) | Latency median / p95 s | Known $/start |
+| ---: | --- | ---: | --- | ---: | --- | ---: |
+| 1 | perplexity/pplx-decider-v1.2 | 9/10 | 60%–98% | 1,310 | 0.349 / 0.420 | 0.0049 |
+| 2 | typesafe/jev-1.14 | 8/10 | 49%–94% | 1,796 | 0.217 / 0.267 | 0.0230 |
+| 3 | openai/gpt-6-luna-decisions | 7/10 | 40%–89% | 2,353 | 0.204 / 0.342 | 0.0418 |
+| 3 | liquid/d1.1 | 7/10 | 40%–89% | 1,751 | 0.289 / 0.475 | 0.0085 |
+| 3 | perplexity/pplx-decider-v1.3:free | 7/10 | 40%–89% | 1,492 | 0.438 / 0.616 | 0.0000 |
+| 6 | heygen/heygen-decision-1 | 3/10 | 11%–60% | 1,800 | 0.633 / 1.545 | 0.0362 |
+| 7 | perplexity/pplx-decider-flash-v1.2 | 1/10 | 2%–40% | 2,648 | 0.207 / 0.241 | 0.0076 |
+| 8 | google/gemini-decision-1 | 0/10 | 0%–28% | — | 0.228 / 0.373 | 0.0181 |
+| 8 | baseten/joey-1 | 0/10 | 0%–28% | — | 0.235 / 0.255 | 0.0013 |
+
+![Win rate and known cost per start, real-time track](results/2026-11-13/predictive-pareto.svg)
+
+**Turn-based track:** only `perplexity/pplx-decider-v1.2` won a game (1/10,
+2,386 frames); the other eight models won none.
+
+How to read these numbers:
+
+- Ten games per model give wide intervals: ranks 2–5 of the real-time track
+  overlap.
+- Latency is the whole HTTP request through OpenRouter, not inference time.
+- Known cost is a lower bound. On the real-time track each decision sends two
+  copies and the slower one is cancelled, so about half of the responses report
+  no cost.
+- Turn-based sessions ran four at a time; real-time sessions ran alone.
 
 ## Quickstart
 

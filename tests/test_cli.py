@@ -65,7 +65,7 @@ class CliTests(unittest.TestCase):
                 self.assertEqual(main(["bench", "run", "--participants", str(participants)]), 0)
         collect.assert_not_called()
         lines = output.getvalue().splitlines()
-        self.assertEqual(sum(line.startswith("Block ") for line in lines), 6)
+        self.assertEqual(sum(line.startswith("Block ") for line in lines), 2)
         self.assertIn("Dry run", lines[-1])
 
     def test_bench_errors_are_reported_without_traceback(self):

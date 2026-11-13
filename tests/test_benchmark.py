@@ -4,6 +4,7 @@ from io import StringIO
 import json
 from pathlib import Path
 from tempfile import TemporaryDirectory
+from threading import Event, Lock
 import unittest
 from unittest.mock import patch
 
@@ -127,16 +128,40 @@ class BenchmarkTests(unittest.TestCase):
 
         collect(self.edition, self.participants, self.metadata, through_block=1, run_session=runner)
         self.assertEqual({block for _, _, _, block in called}, {"1"})
-        first_block_calls = len(called)
-        collect(self.edition, self.participants, self.metadata, run_session=runner)
-        self.assertNotIn("1", {block for _, _, _, block in called[first_block_calls:]})
         self.assertEqual({url for _, url, _, _ in called}, {ENDPOINT, "http://localhost/decisions"})
         for mode in MODES:
-            for index, expected in enumerate((30, 40)):
+            for index, expected in enumerate((10, 13)):
                 paths = (self.edition / "sessions" / f"{index:03d}-{mode}").iterdir()
                 self.assertEqual(sum(len(session_progress(path)[0]) for path in paths), expected)
         collect(self.edition, self.participants, self.metadata, run_session=lambda *_: self.fail("duplicate attempt"))
         self.assertAlmostEqual(wilson(8, 10)[0], 0.490, places=3)
+
+    def test_parallel_turn_based_sessions_follow_real_time_sessions(self):
+        metadata = edition_metadata(self.participants, jobs=2)
+        called, running, overlap = [], set(), Event()
+        lock = Lock()
+
+        def runner(config, participant, path):
+            with lock:
+                called.append(config.execution_mode)
+                running.add(participant.name)
+                if config.execution_mode == "paused" and len(running) > 1:
+                    overlap.set()
+            if config.execution_mode == "paused":
+                overlap.wait(5)  # Each turn-based session waits until another one runs beside it.
+            log = SessionLog(config, path=path)
+            for episode in range(1, config.episodes + 1):
+                log.event("episode_started", episode=episode)
+                log.event("episode_end", episode=episode, reason="completed")
+            log.close()
+            with lock:
+                running.discard(participant.name)
+
+        collect(self.edition, self.participants, metadata, run_session=runner)
+        self.assertEqual(called, ["predictive", "predictive", "paused", "paused"])
+        self.assertTrue(overlap.is_set())
+        with self.assertRaisesRegex(ValueError, "code or environment changed"):
+            collect(self.edition, self.participants, self.metadata, run_session=runner)
 
     def test_report_is_reproducible_and_replay_detects_tampering(self):
         metadata = {**self.metadata, "created_at": "2026-11-13T12:00:00+00:00"}
@@ -160,7 +185,7 @@ class BenchmarkTests(unittest.TestCase):
         first, second = self.directory / "a", self.directory / "b"
         make_report(self.edition, first)
         make_report(first / "edition.zip", second)
-        self.assertEqual(len(list(first.iterdir())), 7)
+        self.assertEqual(len(list(first.iterdir())), 9)
         for file in first.iterdir():
             self.assertEqual(file.read_bytes(), (second / file.name).read_bytes())
         self.assertIn("Unranked", (first / "README.md").read_text(encoding="utf-8"))

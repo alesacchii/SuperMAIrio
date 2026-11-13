@@ -57,7 +57,7 @@ def run(args):
         if item.get("event") == "decision" and item.get("episode") == args.episode}
 
     font = ImageFont.load_default(size=11 * args.scale)
-    timing = "turn-based" if config["execution_mode"] == "paused" else f"{config['game_fps']} FPS, never paused"
+    timing = "turn-based" if config["execution_mode"] == "paused" else f"real-time {config['game_fps']} FPS"
     title = f"{config['model']} | {timing}"
     images = []
     with MarioGame(config["max_frames"]) as game:

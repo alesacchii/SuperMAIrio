@@ -1,5 +1,7 @@
 """Collect a versioned benchmark edition, with the session logs as its journal."""
 
+from argparse import ArgumentTypeError
+from concurrent.futures import ThreadPoolExecutor
 from contextlib import contextmanager
 from dataclasses import dataclass, field, replace
 from datetime import datetime, timezone
@@ -18,7 +20,7 @@ from supermairio.config import ENVIRONMENT_ID, PACKAGE_ROOT, PROJECT_ROOT, TRACK
 from supermairio.agent.client import DecisionError
 from supermairio.runtime.session import session_config
 
-BLOCKS = ((10, 13), (20, 26), (30, 40))
+BLOCKS = ((10, 13),)
 # Session keys stay "predictive" and "paused": they name the recorded sessions of every edition.
 MODES = {
     "predictive": replace(TRACKS["realtime"], headless=True),
@@ -84,7 +86,7 @@ def schedule(size):
                 yield block, index, mode, target, cap
 
 
-def edition_metadata(participants):
+def edition_metadata(participants, *, jobs=1):
     commit = subprocess.run(["git", "rev-parse", "HEAD"], cwd=PROJECT_ROOT, capture_output=True,
         text=True, check=True).stdout.strip()
     sources = sorted([*PACKAGE_ROOT.rglob("*.py"), PROJECT_ROOT / "pyproject.toml", PROJECT_ROOT / "uv.lock",
@@ -92,13 +94,13 @@ def edition_metadata(participants):
     digest = sha256()
     for path in sources:
         digest.update(path.relative_to(PROJECT_ROOT).as_posix().encode() + b"\0" + sha256(path.read_bytes()).digest())
-    return {"version": 1, "commit": commit, "source_sha256": digest.hexdigest(),
+    return {"version": 2, "commit": commit, "source_sha256": digest.hexdigest(),
         "uv_lock_sha256": sha256((PROJECT_ROOT / "uv.lock").read_bytes()).hexdigest(),
         "environment_id": ENVIRONMENT_ID, "python": platform.python_version(), "os": platform.platform(),
         "cpu": os.environ.get("PROCESSOR_IDENTIFIER") or platform.processor() or platform.machine(),
         "logical_cpus": os.cpu_count(), "modes": {name: session_config(config) for name, config in MODES.items()},
         "participants": [participant.public() for participant in participants],
-        "schedule": list(map(list, schedule(len(participants))))}
+        "turn_based_jobs": jobs, "schedule": list(map(list, schedule(len(participants))))}
 
 
 def read_json(path):
@@ -153,34 +155,50 @@ def collect(directory, participants, metadata, *, through_block=len(BLOCKS), run
             temporary.write_text(json.dumps({**metadata, "created_at": utc_now()}, indent=2), encoding="utf-8")
             temporary.replace(manifest)
         runner = run_session or play_session
-        for block, index, mode, target, cap in metadata["schedule"]:
-            if block > through_block:
-                break
-            participant = participants[index]
-            base = directory / "sessions" / f"{index:03d}-{mode}"
-            paths = sorted(base.glob("[1-3]-*"))
-            progress = [session_progress(path) for path in paths if int(path.name[0]) <= block]
-            started = sum(len(attempts) for attempts, _ in progress)
-            finished = sum(episode["reason"] in OUTCOMES for _, episodes in progress for episode in episodes.values())
-            sequence = 1 + max((int(path.name.split("-")[1]) for path in paths if int(path.name[0]) == block), default=0)
-            if finished > target or started > cap:
-                raise ValueError(f"Log beyond the limit for {participant.name}, {mode}")
-            while (episodes := min(target - finished, cap - started)) > 0:
-                path = base / f"{block}-{sequence:03d}"
-                config = replace(MODES[mode], model=participant.model, endpoint=participant.endpoint, episodes=episodes)
+        jobs = metadata["turn_based_jobs"]
+        for current in range(1, through_block + 1):
+            slots = [slot for slot in metadata["schedule"] if slot[0] == current]
+            # Real-time sessions run alone: parallel work would slow the previews and the requests.
+            for block, index, mode, target, cap in slots:
+                if mode != "paused":
+                    play_slot(directory, participants[index], index, mode, block, target, cap, runner)
+            # The turn-based game waits for every answer, so parallel sessions cannot change an outcome.
+            with ThreadPoolExecutor(jobs) as pool:
+                futures = [pool.submit(play_slot, directory, participants[index], index, mode, block, target, cap, runner)
+                    for block, index, mode, target, cap in slots if mode == "paused"]
                 try:
-                    runner(config, participant, path)
-                except DecisionError:
-                    # Keep the interrupted episode and continue with the next slot.
-                    if not session_progress(path)[0]:
-                        raise
-                attempts, results = session_progress(path)
-                if not attempts:
-                    raise ValueError(f"Session without attempts for {participant.name}, {mode}")
-                started += len(attempts)
-                finished += sum(episode["reason"] in OUTCOMES for episode in results.values())
-                sequence += 1
+                    for future in futures:
+                        future.result()
+                except BaseException:
+                    for future in futures:
+                        future.cancel()
+                    raise
 
+
+def play_slot(directory, participant, index, mode, block, target, cap, runner):
+    base = directory / "sessions" / f"{index:03d}-{mode}"
+    paths = sorted(base.glob("[1-3]-*"))
+    progress = [session_progress(path) for path in paths if int(path.name[0]) <= block]
+    started = sum(len(attempts) for attempts, _ in progress)
+    finished = sum(episode["reason"] in OUTCOMES for _, episodes in progress for episode in episodes.values())
+    sequence = 1 + max((int(path.name.split("-")[1]) for path in paths if int(path.name[0]) == block), default=0)
+    if finished > target or started > cap:
+        raise ValueError(f"Log beyond the limit for {participant.name}, {mode}")
+    while (episodes := min(target - finished, cap - started)) > 0:
+        path = base / f"{block}-{sequence:03d}"
+        config = replace(MODES[mode], model=participant.model, endpoint=participant.endpoint, episodes=episodes)
+        try:
+            runner(config, participant, path)
+        except DecisionError:
+            # Keep the interrupted episode and continue with the next slot.
+            if not session_progress(path)[0]:
+                raise
+        attempts, results = session_progress(path)
+        if not attempts:
+            raise ValueError(f"Session without attempts for {participant.name}, {mode}")
+        started += len(attempts)
+        finished += sum(episode["reason"] in OUTCOMES for episode in results.values())
+        sequence += 1
 
 def utc_now():
     return datetime.now(timezone.utc).isoformat(timespec="seconds")
@@ -200,6 +218,13 @@ def play_session(config, participant, path):
         run_model(config, **options)
 
 
+def positive(value):
+    number = int(value)
+    if number < 1:
+        raise ArgumentTypeError("must be at least 1")
+    return number
+
+
 def add_arguments(parser):
     commands = parser.add_subparsers(dest="bench_command", required=True, metavar="COMMAND")
     run = commands.add_parser("run", help="print the schedule, or collect an edition with --live",
@@ -210,6 +235,8 @@ def add_arguments(parser):
         help="edition directory (default: runs/benchmark-v1)")
     run.add_argument("--through-block", type=int, choices=range(1, len(BLOCKS) + 1), default=len(BLOCKS),
         help="stop after this block")
+    run.add_argument("--jobs", type=positive, default=1,
+        help="turn-based sessions played at the same time, after the real-time ones (default: 1)")
     run.add_argument("--live", action="store_true", help="send requests to the endpoints; may incur costs")
     report = commands.add_parser("report", help="write the leaderboard, CSV, charts and archive",
         description="Write README.md, attempts.csv, SVG charts and edition.zip for an edition.")
@@ -230,8 +257,10 @@ def run(args):
                 entry = participants[index]
                 print(f"Block {block} | {mode} | {entry.name} | {entry.model} @ {entry.endpoint} | "
                     f"{target} finished games, at most {cap} starts")
+            print(f"Real-time sessions run one at a time, then turn-based sessions {args.jobs} at a time.")
             if args.live:
-                collect(args.edition, participants, edition_metadata(participants), through_block=args.through_block)
+                collect(args.edition, participants, edition_metadata(participants, jobs=args.jobs),
+                    through_block=args.through_block)
             else:
                 print("Dry run: no request sent. Add --live to collect the edition.")
         else:

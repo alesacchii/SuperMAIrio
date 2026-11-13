@@ -1,0 +1,50 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 820 460" role="img" aria-label="Win rate and known cost per start">
+<rect width="820" height="460" fill="#ffffff"/>
+<g font-family="Arial, sans-serif" fill="#172738" font-size="13">
+<text x="16" y="24" font-size="17" font-weight="bold">Win rate and known cost per start</text>
+<text x="16" y="44" fill="#64748b">Pareto front in blue: no other participant wins more for less. Known cost is a lower bound.</text>
+<line x1="70.0" y1="64" x2="70.0" y2="408" stroke="#d9e0e7"/>
+<text x="70.0" y="426" text-anchor="middle">$0</text>
+<line x1="212.0" y1="64" x2="212.0" y2="408" stroke="#d9e0e7"/>
+<text x="212.0" y="426" text-anchor="middle">$0.01</text>
+<line x1="354.0" y1="64" x2="354.0" y2="408" stroke="#d9e0e7"/>
+<text x="354.0" y="426" text-anchor="middle">$0.02</text>
+<line x1="496.0" y1="64" x2="496.0" y2="408" stroke="#d9e0e7"/>
+<text x="496.0" y="426" text-anchor="middle">$0.03</text>
+<line x1="638.0" y1="64" x2="638.0" y2="408" stroke="#d9e0e7"/>
+<text x="638.0" y="426" text-anchor="middle">$0.04</text>
+<line x1="780.0" y1="64" x2="780.0" y2="408" stroke="#d9e0e7"/>
+<text x="780.0" y="426" text-anchor="middle">$0.05</text>
+<line x1="70" y1="408.0" x2="780" y2="408.0" stroke="#d9e0e7"/>
+<text x="62" y="412.0" text-anchor="end">0%</text>
+<line x1="70" y1="339.2" x2="780" y2="339.2" stroke="#d9e0e7"/>
+<text x="62" y="343.2" text-anchor="end">20%</text>
+<line x1="70" y1="270.4" x2="780" y2="270.4" stroke="#d9e0e7"/>
+<text x="62" y="274.4" text-anchor="end">40%</text>
+<line x1="70" y1="201.6" x2="780" y2="201.6" stroke="#d9e0e7"/>
+<text x="62" y="205.6" text-anchor="end">60%</text>
+<line x1="70" y1="132.8" x2="780" y2="132.8" stroke="#d9e0e7"/>
+<text x="62" y="136.8" text-anchor="end">80%</text>
+<line x1="70" y1="64.0" x2="780" y2="64.0" stroke="#d9e0e7"/>
+<text x="62" y="68.0" text-anchor="end">100%</text>
+<text x="425.0" y="450" text-anchor="middle" fill="#64748b">Known cost per start (USD)</text>
+<polyline points="70.0,167.2 139.2,98.4" fill="none" stroke="#12628e" stroke-width="2"/>
+<circle cx="70.0" cy="167.2" r="6" fill="#12628e" stroke="#ffffff" stroke-width="2"><title>pplx-decider-v1.3 · 7/10 · $0.00000</title></circle>
+<text x="66.0" y="189.2">pplx-decider-v1.3</text>
+<circle cx="88.0" cy="408.0" r="6" fill="#94a3b8" stroke="#ffffff" stroke-width="2"><title>joey-1 · 0/10 · $0.00127</title></circle>
+<text x="98.0" y="412.0">joey-1</text>
+<circle cx="139.2" cy="98.4" r="6" fill="#12628e" stroke="#ffffff" stroke-width="2"><title>pplx-decider-v1.2 · 9/10 · $0.00487</title></circle>
+<text x="149.2" y="102.4">pplx-decider-v1.2</text>
+<circle cx="177.6" cy="373.6" r="6" fill="#94a3b8" stroke="#ffffff" stroke-width="2"><title>pplx-decider-flash-v1.2 · 1/10 · $0.00758</title></circle>
+<text x="187.6" y="377.6">pplx-decider-flash-v1.2</text>
+<circle cx="190.2" cy="167.2" r="6" fill="#94a3b8" stroke="#ffffff" stroke-width="2"><title>liquid-d1.1 · 7/10 · $0.00847</title></circle>
+<text x="200.2" y="171.2">liquid-d1.1</text>
+<circle cx="327.3" cy="408.0" r="6" fill="#94a3b8" stroke="#ffffff" stroke-width="2"><title>gemini-decision-1 · 0/10 · $0.01812</title></circle>
+<text x="337.3" y="412.0">gemini-decision-1</text>
+<circle cx="395.9" cy="132.8" r="6" fill="#94a3b8" stroke="#ffffff" stroke-width="2"><title>jev-1.14 · 8/10 · $0.02295</title></circle>
+<text x="405.9" y="136.8">jev-1.14</text>
+<circle cx="583.3" cy="304.8" r="6" fill="#94a3b8" stroke="#ffffff" stroke-width="2"><title>heygen-decision-1 · 3/10 · $0.03615</title></circle>
+<text x="593.3" y="308.8">heygen-decision-1</text>
+<circle cx="663.3" cy="167.2" r="6" fill="#94a3b8" stroke="#ffffff" stroke-width="2"><title>gpt-6-luna-decisions · 7/10 · $0.04178</title></circle>
+<text x="653.3" y="171.2" text-anchor="end">gpt-6-luna-decisions</text>
+</g></svg>

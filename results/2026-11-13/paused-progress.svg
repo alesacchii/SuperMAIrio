@@ -1,0 +1,116 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 820 394" role="img" aria-label="Maximum position per finished game">
+<rect width="820" height="394" fill="#ffffff"/>
+<g font-family="Arial, sans-serif" fill="#172738" font-size="14">
+<text x="16" y="24" font-size="17" font-weight="bold">Maximum position per finished game</text>
+<line x1="220.0" y1="34" x2="220.0" y2="360" stroke="#d9e0e7"/>
+<text x="220.0" y="382" text-anchor="middle">0 px</text>
+<line x1="334.0" y1="34" x2="334.0" y2="360" stroke="#d9e0e7"/>
+<text x="334.0" y="382" text-anchor="middle">700 px</text>
+<line x1="448.0" y1="34" x2="448.0" y2="360" stroke="#d9e0e7"/>
+<text x="448.0" y="382" text-anchor="middle">1400 px</text>
+<line x1="562.0" y1="34" x2="562.0" y2="360" stroke="#d9e0e7"/>
+<text x="562.0" y="382" text-anchor="middle">2100 px</text>
+<line x1="676.0" y1="34" x2="676.0" y2="360" stroke="#d9e0e7"/>
+<text x="676.0" y="382" text-anchor="middle">2800 px</text>
+<line x1="790.0" y1="34" x2="790.0" y2="360" stroke="#d9e0e7"/>
+<text x="790.0" y="382" text-anchor="middle">3500 px</text>
+<text x="208" y="51" text-anchor="end">pplx-decider-v1.2</text>
+<circle cx="403.86571428571426" cy="38.0" r="3.2" fill="#12628e" opacity="0.68"><title>pplx-decider-v1.2 · 1129 px</title></circle>
+<circle cx="403.86571428571426" cy="49.2" r="3.2" fill="#12628e" opacity="0.68"><title>pplx-decider-v1.2 · 1129 px</title></circle>
+<circle cx="403.86571428571426" cy="42.8" r="3.2" fill="#12628e" opacity="0.68"><title>pplx-decider-v1.2 · 1129 px</title></circle>
+<circle cx="403.86571428571426" cy="54.0" r="3.2" fill="#12628e" opacity="0.68"><title>pplx-decider-v1.2 · 1129 px</title></circle>
+<circle cx="403.86571428571426" cy="47.6" r="3.2" fill="#12628e" opacity="0.68"><title>pplx-decider-v1.2 · 1129 px</title></circle>
+<circle cx="403.86571428571426" cy="41.2" r="3.2" fill="#12628e" opacity="0.68"><title>pplx-decider-v1.2 · 1129 px</title></circle>
+<circle cx="403.86571428571426" cy="52.4" r="3.2" fill="#12628e" opacity="0.68"><title>pplx-decider-v1.2 · 1129 px</title></circle>
+<circle cx="450.4428571428572" cy="46.0" r="3.2" fill="#12628e" opacity="0.68"><title>pplx-decider-v1.2 · 1415 px</title></circle>
+<circle cx="622.4200000000001" cy="39.6" r="3.2" fill="#12628e" opacity="0.68"><title>pplx-decider-v1.2 · 2471 px</title></circle>
+<circle cx="734.7914285714286" cy="50.8" r="3.2" fill="#12628e" opacity="0.68"><title>pplx-decider-v1.2 · 3161 px</title></circle>
+<text x="208" y="85" text-anchor="end">gemini-decision-1</text>
+<circle cx="335.4657142857143" cy="72.0" r="3.2" fill="#12628e" opacity="0.68"><title>gemini-decision-1 · 709 px</title></circle>
+<circle cx="335.4657142857143" cy="83.2" r="3.2" fill="#12628e" opacity="0.68"><title>gemini-decision-1 · 709 px</title></circle>
+<circle cx="335.4657142857143" cy="76.8" r="3.2" fill="#12628e" opacity="0.68"><title>gemini-decision-1 · 709 px</title></circle>
+<circle cx="335.4657142857143" cy="88.0" r="3.2" fill="#12628e" opacity="0.68"><title>gemini-decision-1 · 709 px</title></circle>
+<circle cx="335.4657142857143" cy="81.6" r="3.2" fill="#12628e" opacity="0.68"><title>gemini-decision-1 · 709 px</title></circle>
+<circle cx="335.4657142857143" cy="75.2" r="3.2" fill="#12628e" opacity="0.68"><title>gemini-decision-1 · 709 px</title></circle>
+<circle cx="335.4657142857143" cy="86.4" r="3.2" fill="#12628e" opacity="0.68"><title>gemini-decision-1 · 709 px</title></circle>
+<circle cx="335.4657142857143" cy="80.0" r="3.2" fill="#12628e" opacity="0.68"><title>gemini-decision-1 · 709 px</title></circle>
+<circle cx="335.4657142857143" cy="73.6" r="3.2" fill="#12628e" opacity="0.68"><title>gemini-decision-1 · 709 px</title></circle>
+<circle cx="335.4657142857143" cy="84.8" r="3.2" fill="#12628e" opacity="0.68"><title>gemini-decision-1 · 709 px</title></circle>
+<text x="208" y="119" text-anchor="end">gpt-6-luna-decisions</text>
+<circle cx="354.1942857142857" cy="106.0" r="3.2" fill="#12628e" opacity="0.68"><title>gpt-6-luna-decisions · 824 px</title></circle>
+<circle cx="354.1942857142857" cy="117.2" r="3.2" fill="#12628e" opacity="0.68"><title>gpt-6-luna-decisions · 824 px</title></circle>
+<circle cx="354.1942857142857" cy="110.8" r="3.2" fill="#12628e" opacity="0.68"><title>gpt-6-luna-decisions · 824 px</title></circle>
+<circle cx="354.1942857142857" cy="122.0" r="3.2" fill="#12628e" opacity="0.68"><title>gpt-6-luna-decisions · 824 px</title></circle>
+<circle cx="354.1942857142857" cy="115.6" r="3.2" fill="#12628e" opacity="0.68"><title>gpt-6-luna-decisions · 824 px</title></circle>
+<circle cx="354.1942857142857" cy="109.2" r="3.2" fill="#12628e" opacity="0.68"><title>gpt-6-luna-decisions · 824 px</title></circle>
+<circle cx="354.1942857142857" cy="120.4" r="3.2" fill="#12628e" opacity="0.68"><title>gpt-6-luna-decisions · 824 px</title></circle>
+<circle cx="354.1942857142857" cy="114.0" r="3.2" fill="#12628e" opacity="0.68"><title>gpt-6-luna-decisions · 824 px</title></circle>
+<circle cx="354.1942857142857" cy="107.6" r="3.2" fill="#12628e" opacity="0.68"><title>gpt-6-luna-decisions · 824 px</title></circle>
+<circle cx="354.1942857142857" cy="118.8" r="3.2" fill="#12628e" opacity="0.68"><title>gpt-6-luna-decisions · 824 px</title></circle>
+<text x="208" y="153" text-anchor="end">heygen-decision-1</text>
+<circle cx="331.06857142857143" cy="140.0" r="3.2" fill="#12628e" opacity="0.68"><title>heygen-decision-1 · 682 px</title></circle>
+<circle cx="331.06857142857143" cy="151.2" r="3.2" fill="#12628e" opacity="0.68"><title>heygen-decision-1 · 682 px</title></circle>
+<circle cx="331.06857142857143" cy="144.8" r="3.2" fill="#12628e" opacity="0.68"><title>heygen-decision-1 · 682 px</title></circle>
+<circle cx="331.06857142857143" cy="156.0" r="3.2" fill="#12628e" opacity="0.68"><title>heygen-decision-1 · 682 px</title></circle>
+<circle cx="331.06857142857143" cy="149.6" r="3.2" fill="#12628e" opacity="0.68"><title>heygen-decision-1 · 682 px</title></circle>
+<circle cx="331.06857142857143" cy="143.2" r="3.2" fill="#12628e" opacity="0.68"><title>heygen-decision-1 · 682 px</title></circle>
+<circle cx="331.06857142857143" cy="154.4" r="3.2" fill="#12628e" opacity="0.68"><title>heygen-decision-1 · 682 px</title></circle>
+<circle cx="331.06857142857143" cy="148.0" r="3.2" fill="#12628e" opacity="0.68"><title>heygen-decision-1 · 682 px</title></circle>
+<circle cx="331.06857142857143" cy="141.6" r="3.2" fill="#12628e" opacity="0.68"><title>heygen-decision-1 · 682 px</title></circle>
+<circle cx="453.7" cy="152.8" r="3.2" fill="#12628e" opacity="0.68"><title>heygen-decision-1 · 1435 px</title></circle>
+<text x="208" y="187" text-anchor="end">jev-1.14</text>
+<circle cx="268.5314285714286" cy="174.0" r="3.2" fill="#12628e" opacity="0.68"><title>jev-1.14 · 298 px</title></circle>
+<circle cx="268.5314285714286" cy="185.2" r="3.2" fill="#12628e" opacity="0.68"><title>jev-1.14 · 298 px</title></circle>
+<circle cx="268.5314285714286" cy="178.8" r="3.2" fill="#12628e" opacity="0.68"><title>jev-1.14 · 298 px</title></circle>
+<circle cx="268.5314285714286" cy="190.0" r="3.2" fill="#12628e" opacity="0.68"><title>jev-1.14 · 298 px</title></circle>
+<circle cx="268.5314285714286" cy="183.6" r="3.2" fill="#12628e" opacity="0.68"><title>jev-1.14 · 298 px</title></circle>
+<circle cx="268.5314285714286" cy="177.2" r="3.2" fill="#12628e" opacity="0.68"><title>jev-1.14 · 298 px</title></circle>
+<circle cx="268.5314285714286" cy="188.4" r="3.2" fill="#12628e" opacity="0.68"><title>jev-1.14 · 298 px</title></circle>
+<circle cx="268.5314285714286" cy="182.0" r="3.2" fill="#12628e" opacity="0.68"><title>jev-1.14 · 298 px</title></circle>
+<circle cx="268.5314285714286" cy="175.6" r="3.2" fill="#12628e" opacity="0.68"><title>jev-1.14 · 298 px</title></circle>
+<circle cx="271.3" cy="186.8" r="3.2" fill="#12628e" opacity="0.68"><title>jev-1.14 · 315 px</title></circle>
+<text x="208" y="221" text-anchor="end">joey-1</text>
+<circle cx="271.13714285714286" cy="208.0" r="3.2" fill="#12628e" opacity="0.68"><title>joey-1 · 314 px</title></circle>
+<circle cx="271.13714285714286" cy="219.2" r="3.2" fill="#12628e" opacity="0.68"><title>joey-1 · 314 px</title></circle>
+<circle cx="271.13714285714286" cy="212.8" r="3.2" fill="#12628e" opacity="0.68"><title>joey-1 · 314 px</title></circle>
+<circle cx="271.13714285714286" cy="224.0" r="3.2" fill="#12628e" opacity="0.68"><title>joey-1 · 314 px</title></circle>
+<circle cx="271.13714285714286" cy="217.6" r="3.2" fill="#12628e" opacity="0.68"><title>joey-1 · 314 px</title></circle>
+<circle cx="271.13714285714286" cy="211.2" r="3.2" fill="#12628e" opacity="0.68"><title>joey-1 · 314 px</title></circle>
+<circle cx="271.13714285714286" cy="222.4" r="3.2" fill="#12628e" opacity="0.68"><title>joey-1 · 314 px</title></circle>
+<circle cx="271.13714285714286" cy="216.0" r="3.2" fill="#12628e" opacity="0.68"><title>joey-1 · 314 px</title></circle>
+<circle cx="271.13714285714286" cy="209.6" r="3.2" fill="#12628e" opacity="0.68"><title>joey-1 · 314 px</title></circle>
+<circle cx="271.13714285714286" cy="220.8" r="3.2" fill="#12628e" opacity="0.68"><title>joey-1 · 314 px</title></circle>
+<text x="208" y="255" text-anchor="end">liquid-d1.1</text>
+<circle cx="268.85714285714283" cy="242.0" r="3.2" fill="#12628e" opacity="0.68"><title>liquid-d1.1 · 300 px</title></circle>
+<circle cx="270.6485714285714" cy="253.2" r="3.2" fill="#12628e" opacity="0.68"><title>liquid-d1.1 · 311 px</title></circle>
+<circle cx="270.6485714285714" cy="246.8" r="3.2" fill="#12628e" opacity="0.68"><title>liquid-d1.1 · 311 px</title></circle>
+<circle cx="332.2085714285714" cy="258.0" r="3.2" fill="#12628e" opacity="0.68"><title>liquid-d1.1 · 689 px</title></circle>
+<circle cx="332.5342857142857" cy="251.6" r="3.2" fill="#12628e" opacity="0.68"><title>liquid-d1.1 · 691 px</title></circle>
+<circle cx="333.02285714285716" cy="245.2" r="3.2" fill="#12628e" opacity="0.68"><title>liquid-d1.1 · 694 px</title></circle>
+<circle cx="335.95428571428573" cy="256.4" r="3.2" fill="#12628e" opacity="0.68"><title>liquid-d1.1 · 712 px</title></circle>
+<circle cx="468.68285714285713" cy="250.0" r="3.2" fill="#12628e" opacity="0.68"><title>liquid-d1.1 · 1527 px</title></circle>
+<circle cx="622.0942857142857" cy="243.6" r="3.2" fill="#12628e" opacity="0.68"><title>liquid-d1.1 · 2469 px</title></circle>
+<circle cx="622.5828571428572" cy="254.8" r="3.2" fill="#12628e" opacity="0.68"><title>liquid-d1.1 · 2472 px</title></circle>
+<text x="208" y="289" text-anchor="end">pplx-decider-flash-v1.2</text>
+<circle cx="271.3" cy="276.0" r="3.2" fill="#12628e" opacity="0.68"><title>pplx-decider-flash-v1.2 · 315 px</title></circle>
+<circle cx="271.3" cy="287.2" r="3.2" fill="#12628e" opacity="0.68"><title>pplx-decider-flash-v1.2 · 315 px</title></circle>
+<circle cx="271.3" cy="280.8" r="3.2" fill="#12628e" opacity="0.68"><title>pplx-decider-flash-v1.2 · 315 px</title></circle>
+<circle cx="271.3" cy="292.0" r="3.2" fill="#12628e" opacity="0.68"><title>pplx-decider-flash-v1.2 · 315 px</title></circle>
+<circle cx="271.3" cy="285.6" r="3.2" fill="#12628e" opacity="0.68"><title>pplx-decider-flash-v1.2 · 315 px</title></circle>
+<circle cx="271.3" cy="279.2" r="3.2" fill="#12628e" opacity="0.68"><title>pplx-decider-flash-v1.2 · 315 px</title></circle>
+<circle cx="271.3" cy="290.4" r="3.2" fill="#12628e" opacity="0.68"><title>pplx-decider-flash-v1.2 · 315 px</title></circle>
+<circle cx="271.3" cy="284.0" r="3.2" fill="#12628e" opacity="0.68"><title>pplx-decider-flash-v1.2 · 315 px</title></circle>
+<circle cx="271.3" cy="277.6" r="3.2" fill="#12628e" opacity="0.68"><title>pplx-decider-flash-v1.2 · 315 px</title></circle>
+<circle cx="271.3" cy="288.8" r="3.2" fill="#12628e" opacity="0.68"><title>pplx-decider-flash-v1.2 · 315 px</title></circle>
+<text x="208" y="323" text-anchor="end">pplx-decider-v1.3</text>
+<circle cx="469.4971428571429" cy="310.0" r="3.2" fill="#12628e" opacity="0.68"><title>pplx-decider-v1.3 · 1532 px</title></circle>
+<circle cx="469.4971428571429" cy="321.2" r="3.2" fill="#12628e" opacity="0.68"><title>pplx-decider-v1.3 · 1532 px</title></circle>
+<circle cx="469.4971428571429" cy="314.8" r="3.2" fill="#12628e" opacity="0.68"><title>pplx-decider-v1.3 · 1532 px</title></circle>
+<circle cx="469.4971428571429" cy="326.0" r="3.2" fill="#12628e" opacity="0.68"><title>pplx-decider-v1.3 · 1532 px</title></circle>
+<circle cx="469.4971428571429" cy="319.6" r="3.2" fill="#12628e" opacity="0.68"><title>pplx-decider-v1.3 · 1532 px</title></circle>
+<circle cx="469.4971428571429" cy="313.2" r="3.2" fill="#12628e" opacity="0.68"><title>pplx-decider-v1.3 · 1532 px</title></circle>
+<circle cx="469.4971428571429" cy="324.4" r="3.2" fill="#12628e" opacity="0.68"><title>pplx-decider-v1.3 · 1532 px</title></circle>
+<circle cx="469.4971428571429" cy="318.0" r="3.2" fill="#12628e" opacity="0.68"><title>pplx-decider-v1.3 · 1532 px</title></circle>
+<circle cx="469.4971428571429" cy="311.6" r="3.2" fill="#12628e" opacity="0.68"><title>pplx-decider-v1.3 · 1532 px</title></circle>
+<circle cx="469.4971428571429" cy="322.8" r="3.2" fill="#12628e" opacity="0.68"><title>pplx-decider-v1.3 · 1532 px</title></circle>
+</g></svg>

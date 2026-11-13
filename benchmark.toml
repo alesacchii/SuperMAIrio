@@ -2,17 +2,40 @@
 #   model      = a model ID served by SUPERMAIRIO_ENDPOINT (with SUPERMAIRIO_API_KEY), or
 #   env_prefix = a prefix P that reads P_ENDPOINT, P_MODEL and the optional P_API_KEY.
 # Endpoints and model IDs are part of the published results; keys never are.
+# All participants below share SUPERMAIRIO_ENDPOINT (OpenRouter Decisions API).
 
 [[participants]]
-name = "configured-model"
-env_prefix = "SUPERMAIRIO"
+name = "pplx-decider-v1.2"
+model = "perplexity/pplx-decider-v1.2"
 
-# Another model on the same endpoint:
-# [[participants]]
-# name = "second-model"
-# model = "another-model-id"
+[[participants]]
+name = "pplx-decider-flash-v1.2"
+model = "perplexity/pplx-decider-flash-v1.2"
 
-# A model on its own endpoint:
-# [[participants]]
-# name = "local-model"
-# env_prefix = "SUPERMAIRIO_LOCAL"
+[[participants]]
+name = "pplx-decider-v1.3"
+model = "perplexity/pplx-decider-v1.3:free"
+
+[[participants]]
+name = "liquid-d1.1"
+model = "liquid/d1.1"
+
+[[participants]]
+name = "jev-1.14"
+model = "typesafe/jev-1.14"
+
+[[participants]]
+name = "gemini-decision-1"
+model = "google/gemini-decision-1"
+
+[[participants]]
+name = "joey-1"
+model = "baseten/joey-1"
+
+[[participants]]
+name = "gpt-6-luna-decisions"
+model = "openai/gpt-6-luna-decisions"
+
+[[participants]]
+name = "heygen-decision-1"
+model = "heygen/heygen-decision-1"

@@ -1,0 +1,44 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 820 394" role="img" aria-label="Win rate with 95% Wilson interval">
+<rect width="820" height="394" fill="#ffffff"/>
+<g font-family="Arial, sans-serif" fill="#172738" font-size="14">
+<text x="16" y="24" font-size="17" font-weight="bold">Win rate with 95% Wilson interval</text>
+<line x1="220.0" y1="34" x2="220.0" y2="360" stroke="#d9e0e7"/>
+<text x="220.0" y="382" text-anchor="middle">0%</text>
+<line x1="334.0" y1="34" x2="334.0" y2="360" stroke="#d9e0e7"/>
+<text x="334.0" y="382" text-anchor="middle">20%</text>
+<line x1="448.0" y1="34" x2="448.0" y2="360" stroke="#d9e0e7"/>
+<text x="448.0" y="382" text-anchor="middle">40%</text>
+<line x1="562.0" y1="34" x2="562.0" y2="360" stroke="#d9e0e7"/>
+<text x="562.0" y="382" text-anchor="middle">60%</text>
+<line x1="676.0" y1="34" x2="676.0" y2="360" stroke="#d9e0e7"/>
+<text x="676.0" y="382" text-anchor="middle">80%</text>
+<line x1="790.0" y1="34" x2="790.0" y2="360" stroke="#d9e0e7"/>
+<text x="790.0" y="382" text-anchor="middle">100%</text>
+<text x="208" y="51" text-anchor="end">pplx-decider-v1.2</text>
+<line x1="559.634484726714" y1="46" x2="779.8105585358085" y2="46" stroke="#12628e" stroke-width="2"/>
+<circle cx="733.0" cy="46" r="5" fill="#12628e"/>
+<text x="208" y="85" text-anchor="end">jev-1.14</text>
+<line x1="499.39260877588583" y1="80" x2="757.6911736710061" y2="80" stroke="#12628e" stroke-width="2"/>
+<circle cx="676.0" cy="80" r="5" fill="#12628e"/>
+<text x="208" y="119" text-anchor="end">gpt-6-luna-decisions</text>
+<line x1="446.1635440528529" y1="114" x2="728.5589775784084" y2="114" stroke="#12628e" stroke-width="2"/>
+<circle cx="619.0" cy="114" r="5" fill="#12628e"/>
+<text x="208" y="153" text-anchor="end">liquid-d1.1</text>
+<line x1="446.1635440528529" y1="148" x2="728.5589775784084" y2="148" stroke="#12628e" stroke-width="2"/>
+<circle cx="619.0" cy="148" r="5" fill="#12628e"/>
+<text x="208" y="187" text-anchor="end">pplx-decider-v1.3</text>
+<line x1="446.1635440528529" y1="182" x2="728.5589775784084" y2="182" stroke="#12628e" stroke-width="2"/>
+<circle cx="619.0" cy="182" r="5" fill="#12628e"/>
+<text x="208" y="221" text-anchor="end">heygen-decision-1</text>
+<line x1="281.4410224215916" y1="216" x2="563.8364559471472" y2="216" stroke="#12628e" stroke-width="2"/>
+<circle cx="391.0" cy="216" r="5" fill="#12628e"/>
+<text x="208" y="255" text-anchor="end">pplx-decider-flash-v1.2</text>
+<line x1="230.18944146419156" y1="250" x2="450.36551527328595" y2="250" stroke="#12628e" stroke-width="2"/>
+<circle cx="277.0" cy="250" r="5" fill="#12628e"/>
+<text x="208" y="289" text-anchor="end">gemini-decision-1</text>
+<line x1="220.0" y1="284" x2="378.1936959218468" y2="284" stroke="#12628e" stroke-width="2"/>
+<circle cx="220.0" cy="284" r="5" fill="#12628e"/>
+<text x="208" y="323" text-anchor="end">joey-1</text>
+<line x1="220.0" y1="318" x2="378.1936959218468" y2="318" stroke="#12628e" stroke-width="2"/>
+<circle cx="220.0" cy="318" r="5" fill="#12628e"/>
+</g></svg>

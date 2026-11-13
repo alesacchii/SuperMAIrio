@@ -28,18 +28,17 @@ on its own.
 
 ## Schedule
 
-The schedule has three blocks. Each block alternates the order of participants
-and tracks, so no model always plays first or on a busier machine:
-
-| Block | Finished games (cumulative) | Starts allowed (cumulative) |
-| --- | --- | --- |
-| 1 | 10 | 13 |
-| 2 | 20 | 26 |
-| 3 | 30 | 40 |
-
+Each participant plays 10 finished games per track, with at most 13 starts.
 A game is *finished* when it ends in a win, a death, the frame limit or the
 wall-clock limit. Death and limits count as losses. An interruption caused by
 the provider or by a local stop still uses a start, and is reported separately.
+
+Real-time sessions run first, one at a time, so no other session competes for
+the CPU or the network while the game is running. Turn-based sessions follow;
+with `--jobs N`, up to N participants play them at the same time. The game waits
+for every answer in that track, so concurrency cannot change an outcome, but
+latency is measured under concurrent requests: the edition records the number
+of jobs and the report states it.
 
 Before every real-time session the emulator throughput is measured. Below
 2,000 frames/s the session stops before contacting the model, because slow
@@ -49,10 +48,10 @@ machine is idle.
 ## Scoring
 
 - **Ranking:** wins over finished games, with a 95% Wilson interval. Only
-  participants with all 30 finished games are ranked. The others are listed as
+  participants with all 10 finished games are ranked. The others are listed as
   *Unranked*.
-- **Next to the ranking:** wins per block, interruptions (provider), median
-  frames of the winning games, median and p95 latency per decision, known cost
+- **Next to the ranking:** interruptions (provider), median frames of the
+  winning games, frames of the fastest win, median and p95 latency per decision, known cost
   per start, cost coverage, median effective FPS, and late choices in the
   real-time track.
 - **Cost** is the sum of `usage.cost` returned by the endpoint. It is *known*
@@ -98,18 +97,17 @@ are never written to disk.
 ```powershell
 uv run supermairio bench run                                   # dry run: print the schedule
 uv run supermairio bench run --live --edition runs/benchmark-v1
-uv run supermairio bench run --live --through-block 1          # stop after block 1
+uv run supermairio bench run --live --jobs 4                   # 4 turn-based sessions at a time
 ```
 
 - `--participants FILE` uses another participants file.
 - The edition directory stores `edition.json`: the schedule, participants,
+  the number of turn-based jobs,
   track settings, git commit, a hash of the source code and `uv.lock`, the
   Python version, OS and CPU. A later run that finds a different plan, code or
   environment refuses to continue. Start a new directory instead.
 - To resume after a stop, rerun the same command. A game recorded as started
   keeps its slot even if the process died during it.
-- Run the blocks at different times on the same idle machine with
-  `--through-block 1`, then `2` and `3`.
 
 ## Publishing and verifying
 
@@ -122,7 +120,8 @@ uv run supermairio bench verify results/v1/edition.zip
 
 - `README.md` with one leaderboard per track,
 - `attempts.csv` with every attempt,
-- four SVG charts (win rate with intervals and maximum distance, per track),
+- six SVG charts per edition: win rate with intervals, maximum distance, and
+  win rate against known cost per start with its Pareto front, for each track,
 - `edition.zip` with the edition manifest and every session log.
 
 `verify` replays every recorded input in the emulator, from the edition
