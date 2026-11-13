@@ -206,8 +206,8 @@ wheels = [
 
 [[package]]
 name = "supermairio"
-version = "0.1.0"
-source = { virtual = "." }
+version = "0.2.0"
+source = { editable = "." }
 dependencies = [
     { name = "gym-super-mario-bros" },
     { name = "gymnasium" },

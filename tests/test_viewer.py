@@ -4,8 +4,8 @@ import os
 import unittest
 from pathlib import Path
 
-from app.contracts import Action
-from app.game import MarioGame
+from supermairio.contracts import Action
+from supermairio.game.emulator import MarioGame
 
 
 @unittest.skipUnless(os.environ.get("SUPERMAIRIO_TEST_DISPLAY") == "1", "requires a Windows/OpenGL display")
@@ -17,10 +17,10 @@ class DisplayTests(unittest.TestCase):
         from unittest.mock import patch
         import pyglet
         from pyglet.window import key
-        from app.config import Config
-        from app.runner import run
-        from app.session import SessionLog
-        from app.viewer import GameWindow
+        from supermairio.config import Config
+        from supermairio.runtime.play import run
+        from supermairio.runtime.session import SessionLog
+        from supermairio.game.viewer import GameWindow
         from test_decisions import FakeClient
 
         client = FakeClient(wait=True)
@@ -44,10 +44,10 @@ class DisplayTests(unittest.TestCase):
                     super().poll()
         with tempfile.TemporaryDirectory() as directory:
             factory = lambda config: SessionLog(config, root=directory)
-            with patch("app.runner.openrouter_key", return_value="test-key"), \
-                 patch("app.models.load_model", return_value=client), \
-                 patch("app.session.SessionLog", side_effect=factory), \
-                 patch("app.viewer.GameWindow", Window), patch("sys.stdout", StringIO()):
+            with patch("supermairio.runtime.play.decisions_key", return_value="test-key"), \
+                 patch("supermairio.agent.load_model", return_value=client), \
+                 patch("supermairio.runtime.session.SessionLog", side_effect=factory), \
+                 patch("supermairio.game.viewer.GameWindow", Window), patch("sys.stdout", StringIO()):
                 run(Config(max_frames=60, control_mode="moves"))
             summary = json.loads(next(Path(directory).glob("*/summary.json")).read_text())
             self.assertEqual(summary["status"], "stopped")
@@ -56,12 +56,12 @@ class DisplayTests(unittest.TestCase):
             self.assertEqual(summary["cancelled_requests"], 1)
             self.assertTrue(client.cancelled.is_set())
             self.assertTrue(captions)
-            self.assertTrue(all("mosse 0 | scarti 0" in caption for caption in captions))
+            self.assertTrue(all("moves 0 | discarded 0" in caption for caption in captions))
 
     def test_render_keyboard_focus_reset_and_escape(self):
         import pyglet
         from pyglet.window import key
-        from app.viewer import GameWindow
+        from supermairio.game.viewer import GameWindow
 
         window = GameWindow()
         try:
@@ -81,7 +81,7 @@ class DisplayTests(unittest.TestCase):
                 result = game.step(window.action(), 12)
                 self.assertGreater(result.observation.info["x_pos"], observation.info["x_pos"])
                 self.assertGreater(result.observation.info["y_pos"], observation.info["y_pos"])
-                window.show(result.observation, "SuperMAIrio — destra + corsa + salto")
+                window.show(result.observation, "SuperMAIrio — right + run + jump")
 
                 # Capture the app framebuffer for visual QA, with no OS automation.
                 window.window.dispatch_event("on_draw")
@@ -108,7 +108,7 @@ class DisplayTests(unittest.TestCase):
             window.close()
 
     def test_window_close(self):
-        from app.viewer import GameWindow
+        from supermairio.game.viewer import GameWindow
         window = GameWindow()
         try:
             window.poll()

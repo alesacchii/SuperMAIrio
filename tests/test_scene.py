@@ -2,10 +2,10 @@
 
 import unittest
 
-from app import scene as s
-from app.contracts import has_jump
-from app.game import MarioGame
-from app.moves import MOVES, MoveExecutor
+from supermairio.game import scene as s
+from supermairio.contracts import has_jump
+from supermairio.game.emulator import MarioGame
+from supermairio.game.moves import MOVES, MoveExecutor
 
 
 def ram_with(x=100, screen_x=40, feet=208):

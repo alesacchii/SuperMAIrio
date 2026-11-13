@@ -7,14 +7,15 @@ import json
 import unittest
 from unittest.mock import patch
 
-from app.config import Config, parse_config
-from app.contracts import Action, has_jump
-from app.control import BUTTON_MOVES, TIMED_FRAMES, TIMED_MOVES, UNJUMPED_FRAMES, TimedExecutor
-from app.control import offered_choices
-from app.models._choice import ChoiceModel
-from app.models.decider import Model as Decider
-from app.models.jev import Model as Jev
-from app.openrouter import DecisionError, encode_png
+from helpers import ENDPOINT, MODEL_ENV
+
+from supermairio.config import Config, parse_config
+from supermairio.contracts import Action, has_jump
+from supermairio.game.control import BUTTON_MOVES, TIMED_FRAMES, TIMED_MOVES, UNJUMPED_FRAMES, TimedExecutor
+from supermairio.game.control import offered_choices
+from supermairio.agent import load_model
+from supermairio.agent.prompt import ChoiceModel
+from supermairio.agent.client import DecisionError, encode_png
 import test_realtime
 from test_decisions import SCENE, observation
 
@@ -107,7 +108,7 @@ class TimedControlTests(unittest.TestCase):
                 return {"model": self.model_id, "answers": {question: answers[question]},
                     "usage": {"cost": 0.25, "input_tokens": 10}}
 
-        client = Client("key", 10)
+        client = Client("key", 10, endpoint=ENDPOINT)
         payload = client.build_request(obs, encode_png(obs), frames=0, control_context=context).payload
         decision = asyncio.run(client.decide(payload))
         self.assertEqual([list(sent["questions"]) for sent in client.sent], [["buttons"], ["frames"]])
@@ -126,11 +127,11 @@ class TimedControlTests(unittest.TestCase):
         with self.assertRaises(DecisionError):
             asyncio.run(client.decide(payload))
 
-    def test_jev_padding_note_reaches_both_questions(self):
+    def test_image_padding_note_reaches_both_questions(self):
         obs = observation()
         context = {"execution_mode": "paused", "control_mode": "timed",
             "choices": offered_choices(TIMED_MOVES, scripted=False, active=False)}
-        payload = Jev("key", 10).build_request(obs, encode_png(obs), frames=0, control_context=context).payload
+        payload = load_model("test/second", "key", 10, endpoint=ENDPOINT).build_request(obs, encode_png(obs), frames=0, control_context=context).payload
         self.assertTrue(all("black padding" in q["instructions"] for q in payload["questions"].values()))
 
     def test_realtime_asks_one_question_with_every_offered_duration(self):
@@ -152,17 +153,20 @@ class TimedControlTests(unittest.TestCase):
         obs = observation()
         context = {"execution_mode": "paused", "control_mode": "timed",
             "choices": offered_choices(TIMED_MOVES, scripted=False, active=False)}
-        for client in (Decider("key", 10), Jev("key", 10)):
+        for model in ("test/first", "test/second"):
+            client = load_model(model, "key", 10, endpoint=ENDPOINT)
             request = client.build_request(obs, None, frames=0, control_context=context)
             self.assertEqual([part["type"] for part in request.payload["state"]], ["text"])
             self.assertNotIn("image_preprocessing", request.trace)
             self.assertTrue(all("black padding" not in q["instructions"] for q in request.payload["questions"].values()))
 
+    @patch.dict("supermairio.config.os.environ", MODEL_ENV)
     def test_cli_rejects_a_request_without_observations(self):
         self.assertFalse(parse_config(["--no-image"]).image)
         with patch("sys.stderr", StringIO()), self.assertRaises(SystemExit):
             parse_config(["--no-image", "--no-scene"])
 
+    @patch.dict("supermairio.config.os.environ", MODEL_ENV)
     def test_cli_accepts_timed(self):
         self.assertEqual(parse_config(["--control-mode", "timed"]).control_mode, "timed")
 

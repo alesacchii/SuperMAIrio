@@ -9,14 +9,16 @@ import tempfile
 import unittest
 from unittest.mock import patch
 
-from app.config import Config, parse_config
-from app.contracts import Action, Decision
-from app.control import BUTTON_MOVES, ButtonExecutor
-from app.moves import Flight
-from app.openrouter import DecisionError
-from app.models._choice import ChoiceModel, build_payload
-from app.runner import run
-from app.session import SessionLog
+from helpers import ENDPOINT, MODEL_ENV
+
+from supermairio.config import Config, parse_config
+from supermairio.contracts import Action, Decision
+from supermairio.game.control import BUTTON_MOVES, ButtonExecutor
+from supermairio.game.moves import Flight
+from supermairio.agent.client import DecisionError
+from supermairio.agent.prompt import ChoiceModel, build_payload
+from supermairio.runtime.play import run
+from supermairio.runtime.session import SessionLog
 import test_realtime
 from test_decisions import SCENE, observation
 
@@ -113,6 +115,7 @@ class ButtonControlTests(unittest.TestCase):
             self.assertIsInstance(caught, DecisionError)
             self.assertEqual(summary["moves"], 0)
 
+    @patch.dict("supermairio.config.os.environ", MODEL_ENV)
     def test_cli_selects_protocol(self):
         self.assertEqual(parse_config(["--control-mode", "buttons"]).control_mode, "buttons")
         self.assertEqual(parse_config([]).control_mode, "buttons")
@@ -179,9 +182,9 @@ class ButtonControlTests(unittest.TestCase):
                 return Decision("right_run", self.model_id)
 
         with tempfile.TemporaryDirectory() as directory:
-            with patch("app.runner.openrouter_key", return_value="test-key"), \
-                    patch("app.models.load_model", return_value=Client("test-key", 10)), \
-                    patch("app.session.SessionLog", side_effect=lambda config: SessionLog(config, root=directory)), \
+            with patch("supermairio.runtime.play.decisions_key", return_value="test-key"), \
+                    patch("supermairio.agent.load_model", return_value=Client("test-key", 10, endpoint=ENDPOINT)), \
+                    patch("supermairio.runtime.session.SessionLog", side_effect=lambda config: SessionLog(config, root=directory)), \
                     patch("sys.stdout", StringIO()):
                 run(Config(headless=True, max_frames=50, control_mode="buttons"))
             session = next(Path(directory).iterdir())

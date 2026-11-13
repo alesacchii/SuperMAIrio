@@ -3,7 +3,7 @@
 import unittest
 from unittest.mock import patch
 
-from app.openrouter import DecisionRequestHandle
+from supermairio.agent.client import DecisionRequestHandle
 
 
 class WorkerTimingTests(unittest.TestCase):
@@ -20,9 +20,9 @@ class WorkerTimingTests(unittest.TestCase):
                     if complete_at is not None and now[0] >= complete_at:
                         handle._ready.set()
 
-                with patch("app.openrouter.sys.platform", "win32"), \
-                        patch("app.openrouter.perf_counter", side_effect=lambda: now[0]), \
-                        patch("app.openrouter.sleep", side_effect=sleep):
+                with patch("supermairio.agent.client.sys.platform", "win32"), \
+                        patch("supermairio.agent.client.perf_counter", side_effect=lambda: now[0]), \
+                        patch("supermairio.agent.client.sleep", side_effect=sleep):
                     self.assertEqual(handle.wait(1 / 60), complete_at is not None)
                     self.assertEqual(handle.wait(0), complete_at is not None)
                 self.assertTrue(all(0 < duration <= 0.002 for duration in sleeps))

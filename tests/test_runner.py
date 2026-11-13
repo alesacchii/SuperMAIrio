@@ -4,11 +4,14 @@ import unittest
 from types import SimpleNamespace
 from unittest.mock import patch
 
-from app.config import Config
-from app.contracts import Action
-from app.game import MarioGame
-from app.moves import MOVES
-from app.runner import main, run
+from helpers import MODEL_ENV
+
+from supermairio.config import Config
+from supermairio.contracts import Action
+from supermairio.game.emulator import MarioGame
+from supermairio.game.moves import MOVES
+from supermairio.cli import main
+from supermairio.runtime.play import run
 
 
 class FakeWindow:
@@ -39,7 +42,7 @@ class FakeWindow:
 class RunnerTests(unittest.TestCase):
     def test_default_demo_executes_every_move_action_before_end(self):
         game = MarioGame()
-        with patch("app.runner.MarioGame", return_value=game), \
+        with patch("supermairio.runtime.play.MarioGame", return_value=game), \
              patch.object(game, "step", wraps=game.step) as step, \
              patch("sys.stdout", io.StringIO()):
             run(Config(mode="demo", headless=True))
@@ -51,27 +54,27 @@ class RunnerTests(unittest.TestCase):
         output = io.StringIO()
         with patch("sys.stdout", output):
             run(Config(mode="demo", headless=True, episodes=2, max_frames=7))
-        self.assertEqual(output.getvalue().count("limite di frame raggiunto; frame=7"), 2)
+        self.assertEqual(output.getvalue().count("frame limit reached; frames=7"), 2)
 
     def test_manual_waits_after_end_and_resets_on_r(self):
         window = FakeWindow()
         game = MarioGame(max_frames=2)
-        with patch("app.runner.MarioGame", return_value=game), \
-             patch.dict(sys.modules, {"app.viewer": SimpleNamespace(GameWindow=lambda: window)}), \
+        with patch("supermairio.runtime.play.MarioGame", return_value=game), \
+             patch.dict(sys.modules, {"supermairio.game.viewer": SimpleNamespace(GameWindow=lambda: window)}), \
              patch.object(game, "reset", wraps=game.reset) as reset, \
              patch.object(game, "step", wraps=game.step) as step, \
-             patch("app.runner.sleep"), patch("sys.stdout", io.StringIO()):
+             patch("supermairio.runtime.play.sleep"), patch("sys.stdout", io.StringIO()):
             run(Config(mode="manual", max_frames=2))
         self.assertEqual(reset.call_count, 2)
         self.assertEqual(step.call_count, 4)
         self.assertTrue(window.closed)
-        self.assertTrue(any("R: nuovo tentativo" in text for text in window.captions))
+        self.assertTrue(any("R: new attempt" in text for text in window.captions))
 
     def test_step_failure_closes_game_and_window(self):
         window = FakeWindow()
         game = MarioGame()
-        with patch("app.runner.MarioGame", return_value=game), \
-             patch.dict(sys.modules, {"app.viewer": SimpleNamespace(GameWindow=lambda: window)}), \
+        with patch("supermairio.runtime.play.MarioGame", return_value=game), \
+             patch.dict(sys.modules, {"supermairio.game.viewer": SimpleNamespace(GameWindow=lambda: window)}), \
              patch.object(game, "step", side_effect=OSError("failure")), \
              patch.object(game, "close", wraps=game.close) as close:
             with self.assertRaises(OSError):
@@ -79,9 +82,10 @@ class RunnerTests(unittest.TestCase):
         close.assert_called_once()
         self.assertTrue(window.closed)
 
+    @patch.dict("supermairio.config.os.environ", MODEL_ENV)
     def test_interrupt_exit_status(self):
-        with patch("app.runner.run", side_effect=KeyboardInterrupt), patch("sys.stdout", io.StringIO()):
-            self.assertEqual(main(["--headless"]), 130)
+        with patch("supermairio.runtime.play.run", side_effect=KeyboardInterrupt), patch("sys.stdout", io.StringIO()):
+            self.assertEqual(main(["play", "--headless"]), 130)
 
 
 if __name__ == "__main__":

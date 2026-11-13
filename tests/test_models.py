@@ -1,10 +1,9 @@
-"""Model discovery, selection and adapter contracts."""
+"""Model selection and the shared adapter contract."""
 
 import asyncio
 import base64
 import io
 import os
-import sys
 import tempfile
 from pathlib import Path
 import unittest
@@ -14,93 +13,29 @@ import httpx
 import numpy as np
 from PIL import Image
 
-from app.config import parse_config
-from app.contracts import Decision, Observation
-from app.models import get_model_class, load_model
-from app.models.gpt_luna import MODEL_ID, Model
-from app.models.jev import MODEL_ID as JEV_MODEL_ID, Model as JevModel
-from app.models.decider import MODEL_ID as DECIDER_MODEL_ID, Model as DeciderModel
-from app.models.decider_flash import MODEL_ID as FLASH_MODEL_ID, Model as FlashModel
-from app.models.d1 import MODEL_ID as D1_MODEL_ID, Model as D1Model
-from app.models.gemini_decision import MODEL_ID as GEMINI_MODEL_ID, Model as GeminiModel
-from app.models.joey import MODEL_ID as JOEY_MODEL_ID, Model as JoeyModel
-from app.openrouter import ENDPOINT, OpenRouterClient, encode_png
-
+from supermairio.config import parse_config
+from supermairio.contracts import Decision, Observation
+from supermairio.agent import load_model
+from supermairio.agent.prompt import ChoiceModel
+from supermairio.agent.client import DecisionsClient, encode_png
+from helpers import ENDPOINT, MODEL_ENV, MODEL_ID
 
 class ModelTests(unittest.TestCase):
-    def test_decider_flash_uses_shared_protocol_without_model_specific_controls(self):
-        self.assertEqual(FLASH_MODEL_ID, "perplexity/pplx-decider-flash-v1.2")
-        self.assertIs(get_model_class("decider_flash"), FlashModel)
-        self.assertIs(get_model_class(FLASH_MODEL_ID), FlashModel)
-        self.assertEqual(parse_config(["--model", "decider_flash"]).model, "decider_flash")
-        obs = Observation(np.zeros((240, 256, 3), dtype=np.uint8), {"x_pos": 40})
-        for png in (None, encode_png(obs)):
-            for context in ({"execution_mode": "predictive", "control_mode": "buttons", "decision_frames": 33},
-                            {"execution_mode": "realtime", "control_mode": "buttons"}):
-                with self.subTest(image=png is not None, context=context):
-                    flash = FlashModel("test-key", 10).build_request(obs, png, frames=0, control_context=context)
-                    decider = DeciderModel("test-key", 10).build_request(obs, png, frames=0, control_context=context)
-                    self.assertEqual(flash.payload, {**decider.payload, "model": FLASH_MODEL_ID})
-                    self.assertEqual(flash.trace, decider.trace)
-
-    def test_joey_uses_shared_protocol_without_model_specific_controls(self):
-        self.assertEqual(JOEY_MODEL_ID, "baseten/joey-1")
-        self.assertIs(get_model_class("joey"), JoeyModel)
-        self.assertIs(get_model_class(JOEY_MODEL_ID), JoeyModel)
-        self.assertEqual(parse_config(["--model", "joey"]).model, "joey")
-        obs = Observation(np.zeros((240, 256, 3), dtype=np.uint8), {"x_pos": 40})
-        for png in (None, encode_png(obs)):
-            for context in ({"execution_mode": "predictive", "control_mode": "buttons", "decision_frames": 33},
-                            {"execution_mode": "realtime", "control_mode": "buttons"}):
-                with self.subTest(image=png is not None, context=context):
-                    joey = JoeyModel("test-key", 10).build_request(obs, png, frames=0, control_context=context)
-                    luna = Model("test-key", 10).build_request(obs, png, frames=0, control_context=context)
-                    self.assertEqual(joey.payload, {**luna.payload, "model": JOEY_MODEL_ID})
-                    self.assertEqual(joey.trace, luna.trace)
-
-    def test_gemini_uses_shared_protocol_without_model_specific_controls(self):
-        self.assertEqual(GEMINI_MODEL_ID, "google/gemini-decision-1")
-        self.assertIs(get_model_class("gemini_decision"), GeminiModel)
-        self.assertIs(get_model_class(GEMINI_MODEL_ID), GeminiModel)
-        self.assertEqual(parse_config(["--model", "gemini_decision"]).model, "gemini_decision")
-        obs = Observation(np.zeros((240, 256, 3), dtype=np.uint8), {"x_pos": 40})
-        for context in ({"execution_mode": "predictive", "control_mode": "buttons", "decision_frames": 33},
-                        {"execution_mode": "realtime", "control_mode": "buttons"}):
-            with self.subTest(context=context):
-                gemini = GeminiModel("test-key", 10).build_request(obs, encode_png(obs), frames=0, control_context=context)
-                luna = Model("test-key", 10).build_request(obs, encode_png(obs), frames=0, control_context=context)
-                self.assertEqual(gemini.payload, {**luna.payload, "model": GEMINI_MODEL_ID})
-                self.assertEqual(gemini.trace, luna.trace)
-
-    def test_decider_uses_shared_protocol_without_model_specific_controls(self):
-        self.assertIs(get_model_class("decider"), DeciderModel)
-        self.assertIs(get_model_class(DECIDER_MODEL_ID), DeciderModel)
-        obs = Observation(np.zeros((240, 256, 3), dtype=np.uint8), {"x_pos": 40})
-        context = {"execution_mode": "realtime", "control_mode": "buttons"}
-        decider = DeciderModel("test-key", 10).build_request(obs, encode_png(obs), frames=0, control_context=context)
-        luna = Model("test-key", 10).build_request(obs, encode_png(obs), frames=0, control_context=context)
-        self.assertEqual(decider.payload, {**luna.payload, "model": DECIDER_MODEL_ID})
-        self.assertEqual(decider.trace, luna.trace)
-
-    def test_d1_uses_shared_protocol_without_model_specific_controls(self):
-        self.assertEqual(D1_MODEL_ID, "liquid/d1.1")
-        self.assertIs(get_model_class("d1"), D1Model)
-        self.assertIs(get_model_class(D1_MODEL_ID), D1Model)
-        obs = Observation(np.zeros((240, 256, 3), dtype=np.uint8), {"x_pos": 40})
-        context = {"execution_mode": "realtime", "control_mode": "buttons"}
-        d1 = D1Model("test-key", 10).build_request(obs, encode_png(obs), frames=0, control_context=context)
-        luna = Model("test-key", 10).build_request(obs, encode_png(obs), frames=0, control_context=context)
-        self.assertEqual(d1.payload, {**luna.payload, "model": D1_MODEL_ID})
-        self.assertEqual(d1.trace, luna.trace)
+    def test_model_ids_pass_through(self):
+        for identifier in ("first-model", "vendor/second-model:variant"):
+            with self.subTest(model=identifier):
+                client = load_model(identifier, "test-key", 10, endpoint=ENDPOINT)
+                self.assertIs(type(client), ChoiceModel)
+                self.assertEqual(client.model_id, identifier)
 
     def test_adapter_can_decode_other_questions_using_shared_http(self):
-        class Client(OpenRouterClient):
+        class Client(DecisionsClient):
             def parse_response(self, body, payload):
                 self.payload_seen = payload
                 return Decision(body["control"], "test/custom", usage=body["usage"])
 
         async def check():
-            client = Client("test-key", 10, transport=httpx.MockTransport(lambda request:
+            client = Client("test-key", 10, endpoint=ENDPOINT, transport=httpx.MockTransport(lambda request:
                 httpx.Response(200, json={"control": "right_jump", "usage": {"cost": 0.01}})))
             payload = {"questions": {"horizontal": {}, "jump": {}}}
             try:
@@ -112,37 +47,29 @@ class ModelTests(unittest.TestCase):
                 await client.aclose()
         asyncio.run(check())
 
-    def test_module_name_and_existing_router_identifier_select_same_adapter(self):
-        self.assertIs(get_model_class("gpt_luna"), Model)
-        self.assertIs(get_model_class(MODEL_ID), Model)
-        self.assertIsInstance(load_model("gpt_luna", "test-key", 10), Model)
-        self.assertEqual(parse_config(["--model", "gpt_luna"]).model, "gpt_luna")
-
     def test_adapter_binds_model_and_exposes_trace_without_wire_assumptions(self):
         obs = Observation(np.zeros((240, 256, 3), dtype=np.uint8), {"x_pos": 40})
-        request = Model("test-key", 10).build_request(obs, encode_png(obs), frames=0)
+        request = load_model(MODEL_ID, "test-key", 10, endpoint=ENDPOINT).build_request(obs, encode_png(obs), frames=0)
         self.assertEqual(request.payload["model"], MODEL_ID)
         self.assertEqual(request.trace["context"]["progress"], {"x": 40})
         self.assertEqual(request.trace["questions"], request.payload["questions"])
         self.assertNotIn("test-key", repr(request))
 
-    def test_jev_uses_same_multimodal_prompt_and_openrouter_transport(self):
-        self.assertIs(get_model_class("jev"), JevModel)
-        self.assertIs(get_model_class(JEV_MODEL_ID), JevModel)
+    def test_models_share_multimodal_prompt_and_transport(self):
         obs = Observation(np.full((240, 256, 3), [123, 45, 67], dtype=np.uint8), {"x_pos": 40})
         for context in (None, {"execution_mode": "realtime", "recent_response_frames": 15},
                 {"execution_mode": "realtime", "control_mode": "buttons", "recent_response_frames": 15}):
             with self.subTest(context=context):
-                request = JevModel("test-key", 10).build_request(obs, encode_png(obs), frames=0,
+                request = load_model("test/second", "test-key", 10, endpoint=ENDPOINT).build_request(obs, encode_png(obs), frames=0,
                     control_context=context)
-                luna = Model("test-key", 10).build_request(obs, encode_png(obs), frames=0,
+                baseline = load_model(MODEL_ID, "test-key", 10, endpoint=ENDPOINT).build_request(obs, encode_png(obs), frames=0,
                     control_context=context)
-                self.assertEqual(request.payload["model"], JEV_MODEL_ID)
-                self.assertEqual(request.payload["state"][0], luna.payload["state"][0])
-                self.assertEqual(request.trace["context"], luna.trace["context"])
+                self.assertEqual(request.payload["model"], "test/second")
+                self.assertEqual(request.payload["state"][0], baseline.payload["state"][0])
+                self.assertEqual(request.trace["context"], baseline.trace["context"])
                 question = request.payload["questions"]["next_action"]
-                self.assertEqual(question["criteria"], luna.payload["questions"]["next_action"]["criteria"])
-                self.assertTrue(question["instructions"].startswith(luna.payload["questions"]["next_action"]["instructions"]))
+                self.assertEqual(question["criteria"], baseline.payload["questions"]["next_action"]["criteria"])
+                self.assertTrue(question["instructions"].startswith(baseline.payload["questions"]["next_action"]["instructions"]))
                 image_url = request.payload["state"][1]["image_url"]["url"]
                 with Image.open(io.BytesIO(base64.b64decode(image_url.split(",", 1)[1]))) as image:
                     self.assertEqual(image.size, (280, 280))
@@ -154,84 +81,44 @@ class ModelTests(unittest.TestCase):
         async def check_transport():
             def respond(request):
                 self.assertEqual(str(request.url), ENDPOINT)
-                return httpx.Response(200, json={"model": JEV_MODEL_ID,
+                return httpx.Response(200, json={"model": "test/second",
                     "answers": {"next_action": {"type": "choice", "choice": "right"}}})
-            client = JevModel("test-key", 10, transport=httpx.MockTransport(respond))
+            client = ChoiceModel("test-key", 10, model_id="test/second", endpoint=ENDPOINT, transport=httpx.MockTransport(respond))
             try:
                 decision = await client.decide(request.payload)
                 self.assertEqual(decision.move, "right")
-                self.assertEqual(decision.model, JEV_MODEL_ID)
+                self.assertEqual(decision.model, "test/second")
             finally:
                 await client.aclose()
 
         asyncio.run(check_transport())
 
-    def test_model_selection_precedence_and_fallback(self):
+    def test_model_selection_precedence_and_required_fields(self):
         with tempfile.TemporaryDirectory() as directory, \
-                patch("app.config.PROJECT_ROOT", Path(directory)), patch.dict(os.environ, {}, clear=True):
-            self.assertEqual(parse_config([]).model, DECIDER_MODEL_ID)
-            envfile = Path(directory, ".env")
-            envfile.write_text("OPENROUTER_MODEL=typesafe/jev-1.14\n", encoding="utf-8")
-            self.assertEqual(parse_config([]).model, JEV_MODEL_ID)
-            self.assertNotIn("OPENROUTER_MODEL", os.environ)
-            with patch.dict(os.environ, {"OPENROUTER_MODEL": "gpt_luna"}):
-                self.assertEqual(parse_config([]).model, "gpt_luna")
-                self.assertEqual(parse_config(["--model", "jev"]).model, "jev")
-            envfile.write_text("OPENROUTER_MODEL=\n", encoding="utf-8")
-            self.assertEqual(parse_config([]).model, DECIDER_MODEL_ID)
-            for value in ("unknown/model", "   "):
-                with patch.dict(os.environ, {"OPENROUTER_MODEL": value}), \
-                        patch("sys.stderr", io.StringIO()), self.assertRaises(SystemExit):
+                patch("supermairio.config.PROJECT_ROOT", Path(directory)), patch.dict(os.environ, {}, clear=True):
+            self.assertEqual(parse_config(["--mode", "demo"]).mode, "demo")
+            self.assertEqual(parse_config(["--mode", "manual"]).mode, "manual")
+            with patch("sys.stdout", io.StringIO()), self.assertRaises(SystemExit) as help_exit:
+                parse_config(["--help"])
+            self.assertEqual(help_exit.exception.code, 0)
+            for env in ({}, {"SUPERMAIRIO_MODEL": MODEL_ID}, {"SUPERMAIRIO_ENDPOINT": ENDPOINT}):
+                with patch.dict(os.environ, env, clear=True), patch("sys.stderr", io.StringIO()), self.assertRaises(SystemExit):
                     parse_config([])
+            envfile = Path(directory, ".env")
+            envfile.write_text(f"SUPERMAIRIO_MODEL={MODEL_ID}\nSUPERMAIRIO_ENDPOINT={ENDPOINT}\n", encoding="utf-8")
+            self.assertEqual(parse_config([]).model, MODEL_ID)
+            self.assertNotIn("SUPERMAIRIO_MODEL", os.environ)
+            with patch.dict(os.environ, {"SUPERMAIRIO_MODEL": "test/env"}):
+                self.assertEqual(parse_config([]).model, "test/env")
+                self.assertEqual(parse_config(["--model", "test/cli"]).model, "test/cli")
 
-    def test_new_file_is_discovered_without_registry_changes(self):
-        code = ('from app.models.gpt_luna import Model as LunaModel\n'
-                'class Model(LunaModel):\n'
-                '    model_id = "test/new-model"\n')
-        with tempfile.TemporaryDirectory() as directory:
-            Path(directory, "new_model.py").write_text(code, encoding="utf-8")
-            try:
-                with patch("app.models.__path__", [directory]):
-                    adapter = get_model_class("new_model")
-                    self.assertIs(adapter, get_model_class("test/new-model"))
-                    obs = Observation(np.zeros((240, 256, 3), dtype=np.uint8), {})
-                    request = load_model("new_model", "key", 10).build_request(
-                        obs, encode_png(obs), frames=0)
-                    self.assertEqual(request.payload["model"], "test/new-model")
-            finally:
-                sys.modules.pop("app.models.new_model", None)
-
-    def test_invalid_adapter_is_rejected(self):
-        with tempfile.TemporaryDirectory() as directory:
-            Path(directory, "invalid_model.py").write_text("MODEL_ID = 'test/id'\n", encoding="utf-8")
-            try:
-                with patch("app.models.__path__", [directory]), self.assertRaisesRegex(ValueError, "deve esporre Model"):
-                    get_model_class("invalid_model")
-            finally:
-                sys.modules.pop("app.models.invalid_model", None)
-
-    def test_duplicate_identifiers_are_rejected(self):
-        code = ('from app.models.gpt_luna import Model as LunaModel\n'
-                'class Model(LunaModel):\n'
-                '    model_id = "test/duplicate"\n')
-        with tempfile.TemporaryDirectory() as directory:
-            for name in ("first_model", "second_model"):
-                Path(directory, name + ".py").write_text(code, encoding="utf-8")
-            try:
-                with patch("app.models.__path__", [directory]), self.assertRaisesRegex(ValueError, "duplicato"):
-                    get_model_class("first_model")
-            finally:
-                for name in ("first_model", "second_model"):
-                    sys.modules.pop("app.models." + name, None)
-
-    def test_unknown_model_is_reported_before_start(self):
-        with self.assertRaisesRegex(ValueError, "Modello non configurato"):
-            get_model_class("not_configured")
-        with patch("sys.stderr", io.StringIO()), self.assertRaises(SystemExit) as caught:
-            parse_config(["--model", "not_configured"])
-        self.assertEqual(caught.exception.code, 2)
+    @patch.dict("supermairio.config.os.environ", MODEL_ENV)
+    def test_any_model_id_uses_the_shared_adapter(self):
+        self.assertEqual(parse_config(["--model", "not_configured"]).model, "not_configured")
+        client = load_model("vendor/unlisted:variant", "test-key", 10, endpoint=ENDPOINT)
+        self.assertIs(type(client), ChoiceModel)
+        self.assertEqual(client.model_id, "vendor/unlisted:variant")
         self.assertEqual(parse_config(["--mode", "demo", "--model", "not_configured"]).mode, "demo")
-
 
 if __name__ == "__main__":
     unittest.main()

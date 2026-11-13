@@ -17,14 +17,17 @@ import httpx
 import numpy as np
 from PIL import Image
 
-from app.config import Config, DEFAULT_MODEL, openrouter_key, parse_config
-from app.contracts import Action, Decision, Observation, StepResult
-from app.models.gpt_luna import Model, build_payload
-from app.moves import CHOICES
-from app.openrouter import (DecisionError, DecisionRequestHandle, DecisionWorker, OpenRouterClient,
+from helpers import ENDPOINT, MODEL_ENV, MODEL_ID
+
+from supermairio.config import Config, decisions_key, parse_config
+from supermairio.contracts import Action, Decision, Observation, StepResult
+from supermairio.agent.prompt import ChoiceModel, build_payload
+from supermairio.game.moves import CHOICES
+from supermairio.agent.client import (DecisionError, DecisionRequestHandle, DecisionWorker, DecisionsClient,
     encode_png, parse_decision)
-from app.runner import main, run
-from app.session import SessionLog
+from supermairio.cli import main
+from supermairio.runtime.play import run
+from supermairio.runtime.session import SessionLog
 
 
 def observation(x=40):
@@ -41,7 +44,7 @@ SCENE = {"mario": {"size": "small", "on_ground": True, "vertical": "none", "spee
 
 
 def response(action="high_jump_right"):
-    return {"model": DEFAULT_MODEL, "answers": {"next_action": {
+    return {"model": MODEL_ID, "answers": {"next_action": {
         "type": "choice", "choice": action, "confidence": 0.8,
         "probabilities": {action: 1.0}}}, "id": "request-1", "provider": "OpenAI",
         "usage": {"input_tokens": 100, "output_tokens": 0, "cost": 0.00001}}
@@ -55,7 +58,7 @@ class ProtocolTests(unittest.TestCase):
             "current_move": "high_jump_right", "move_finished": False,
             "move_remaining_frames": None, "tail_action": "right_run"}
         def state():
-            return json.loads(build_payload(DEFAULT_MODEL, obs, b"png", frames=0,
+            return json.loads(build_payload(MODEL_ID, obs, b"png", frames=0,
                 control_context=control)["state"][0]["text"])
         initial = state()
         self.assertIsNone(initial["move"]["response_in_frames"])
@@ -69,7 +72,7 @@ class ProtocolTests(unittest.TestCase):
         self.assertIn("estimated at response receipt", forecast["warnings"][0])
 
     def test_prompt_describes_control_constraints_without_conflicting_guidance(self):
-        payload = build_payload(DEFAULT_MODEL, observation(), b"png", frames=0,
+        payload = build_payload(MODEL_ID, observation(), b"png", frames=0,
             control_context={"execution_mode": "realtime"})
         question = payload["questions"]["next_action"]
         instructions = question["instructions"]
@@ -89,7 +92,7 @@ class ProtocolTests(unittest.TestCase):
     def test_png_scene_state_and_all_choices(self):
         obs = observation()
         obs.info.update(scene=SCENE, time=400)
-        payload = build_payload(DEFAULT_MODEL, obs, encode_png(obs), frames=12,
+        payload = build_payload(MODEL_ID, obs, encode_png(obs), frames=12,
             previous_move="walk_right", previous_position=35)
         self.assertEqual(set(payload["questions"]["next_action"]["criteria"]), set(CHOICES) - {"continue"})
         self.assertIn("continue", CHOICES)
@@ -122,7 +125,7 @@ class ProtocolTests(unittest.TestCase):
         control = {"execution_mode": "realtime", "game_fps": 60, "recent_latency_seconds": 0.25, "recent_response_frames": 15,
             "current_move": "high_jump_right", "move_finished": False,
             "move_remaining_frames": None, "tail_action": "right_run"}
-        state = json.loads(build_payload(DEFAULT_MODEL, obs, encode_png(obs), frames=0,
+        state = json.loads(build_payload(MODEL_ID, obs, encode_png(obs), frames=0,
             control_context=control)["state"][0]["text"])
         # 15 frames: Mario at 1.5 px/frame closes 22.5 px on the pipe and 31.8 px on a goomba walking left.
         self.assertEqual(state["nearby"]["enemies"][0]["dx_at_response"], 32)
@@ -132,7 +135,7 @@ class ProtocolTests(unittest.TestCase):
         self.assertEqual(state["move"], {"current": "high_jump_right", "phase": "running", "ends": "at landing",
             "then": "no buttons", "response_in_frames": 15, "frames_executed": 0,
             "starting": True})
-        paused = json.loads(build_payload(DEFAULT_MODEL, obs, encode_png(obs), frames=0,
+        paused = json.loads(build_payload(MODEL_ID, obs, encode_png(obs), frames=0,
             control_context={**control, "execution_mode": "paused"})["state"][0]["text"])
         self.assertNotIn("dx_at_response", paused["nearby"]["enemies"][0])
         self.assertEqual(paused["move"]["response_in_frames"], 0)
@@ -141,7 +144,7 @@ class ProtocolTests(unittest.TestCase):
         control = {"execution_mode": "realtime", "current_move": "high_jump_right", "move_finished": False,
             "move_remaining_frames": None, "tail_action": "right_run", "landing_in_frames": 20}
         def state(obs, **changes):
-            payload = build_payload(DEFAULT_MODEL, obs, b"png", frames=0, control_context={**control, **changes})
+            payload = build_payload(MODEL_ID, obs, b"png", frames=0, control_context={**control, **changes})
             return json.loads(payload["state"][0]["text"]), payload["questions"]["next_action"]["instructions"]
         obs = observation()
         obs.info["scene"] = SCENE
@@ -165,7 +168,7 @@ class ProtocolTests(unittest.TestCase):
                 obs = observation()
                 obs.info.update(scene={**SCENE, "enemies": [{"type": "goomba", "dx": dx, "dy": dy,
                     "moving": "left", "speed": speed}]})
-                state = json.loads(build_payload(DEFAULT_MODEL, obs, encode_png(obs), frames=0,
+                state = json.loads(build_payload(MODEL_ID, obs, encode_png(obs), frames=0,
                     control_context=control)["state"][0]["text"])
                 warnings = state.get("warnings", [])
                 self.assertEqual(bool(warnings), warned)
@@ -175,7 +178,7 @@ class ProtocolTests(unittest.TestCase):
 
     def test_without_scene_the_screenshot_is_the_only_perception(self):
         obs = Observation(observation().rgb, {"x_pos": 0, "time": 80})
-        payload = build_payload(DEFAULT_MODEL, obs, encode_png(obs), frames=0, previous_position=0)
+        payload = build_payload(MODEL_ID, obs, encode_png(obs), frames=0, previous_position=0)
         state = json.loads(payload["state"][0]["text"])
         self.assertNotIn("nearby", state)
         self.assertNotIn("jump_reach_px", state["mario"])
@@ -189,7 +192,7 @@ class ProtocolTests(unittest.TestCase):
     def test_all_moves_and_optional_metadata(self):
         for move in CHOICES:
             self.assertEqual(parse_decision(response(move)).move, move)
-        body = {"model": DEFAULT_MODEL, "answers": {"next_action": {"type": "choice", "choice": "continue"}}}
+        body = {"model": MODEL_ID, "answers": {"next_action": {"type": "choice", "choice": "continue"}}}
         self.assertIsNone(parse_decision(body).confidence)
 
     def test_invalid_responses(self):
@@ -210,10 +213,10 @@ class ProtocolTests(unittest.TestCase):
             with self.subTest(body=body), self.assertRaises(DecisionError):
                 parse_decision(body)
 
-    @patch.dict("app.config.os.environ", {"OPENROUTER_MODEL": Config().model})
+    @patch.dict("supermairio.config.os.environ", MODEL_ENV)
     def test_config_and_timeout_validation(self):
         self.assertEqual(parse_config([]).mode, "model")
-        self.assertEqual(parse_config([]).model, DEFAULT_MODEL)
+        self.assertEqual(parse_config([]).model, MODEL_ID)
         self.assertEqual(parse_config(["--mode", "demo", "--headless"]).mode, "demo")
         for value in ("0", "-1", "nan", "inf", "abc"):
             with patch("sys.stderr", StringIO()), self.assertRaises(SystemExit):
@@ -221,22 +224,23 @@ class ProtocolTests(unittest.TestCase):
         with patch("sys.stderr", StringIO()), self.assertRaises(SystemExit):
             parse_config(["--mode", "manual", "--headless"])
 
-    def test_env_overrides_dotenv_and_missing_key(self):
+    def test_env_overrides_dotenv_and_allows_missing_key(self):
         with tempfile.TemporaryDirectory() as directory:
-            Path(directory, ".env").write_text("OPENROUTER_API_KEY=from-file\n", encoding="utf-8")
-            with patch("app.config.PROJECT_ROOT", Path(directory)), patch.dict(os.environ, {"OPENROUTER_API_KEY": "from-env"}):
-                self.assertEqual(openrouter_key(), "from-env")
-            with patch("app.config.PROJECT_ROOT", Path(directory)), patch.dict(os.environ, {}, clear=True):
-                self.assertEqual(openrouter_key(), "from-file")
-            with patch("app.config.PROJECT_ROOT", Path(directory)), patch.dict(os.environ, {"OPENROUTER_API_KEY": ""}):
-                with self.assertRaises(ValueError):
-                    openrouter_key()
+            Path(directory, ".env").write_text(f"SUPERMAIRIO_ENDPOINT={ENDPOINT}\nSUPERMAIRIO_API_KEY=from-file\n", encoding="utf-8")
+            with patch("supermairio.config.PROJECT_ROOT", Path(directory)), patch.dict(os.environ, {"SUPERMAIRIO_API_KEY": "from-env"}):
+                self.assertEqual(decisions_key(ENDPOINT), "from-env")
+            with patch("supermairio.config.PROJECT_ROOT", Path(directory)), patch.dict(os.environ, {}, clear=True):
+                self.assertEqual(decisions_key(ENDPOINT), "from-file")
+            with patch("supermairio.config.PROJECT_ROOT", Path(directory)), patch.dict(os.environ, {"SUPERMAIRIO_API_KEY": ""}):
+                self.assertIsNone(decisions_key(ENDPOINT))
 
-    def test_missing_key_prevents_emulator_and_logging(self):
-        with patch("app.runner.openrouter_key", side_effect=ValueError("missing key")), \
-             patch("app.runner.MarioGame") as game, patch("sys.stdout", StringIO()):
-            self.assertEqual(main([]), 1)
+    def test_missing_connection_prevents_emulator_and_model_loading(self):
+        with patch("supermairio.config.environment", return_value={}), \
+             patch("supermairio.runtime.play.MarioGame") as game, patch("supermairio.agent.load_model") as model, \
+             patch("sys.stderr", StringIO()), self.assertRaises(SystemExit):
+            main(["play"])
         game.assert_not_called()
+        model.assert_not_called()
 
 
 class ClientTests(unittest.IsolatedAsyncioTestCase):
@@ -244,12 +248,12 @@ class ClientTests(unittest.IsolatedAsyncioTestCase):
         async def slow(request):
             await asyncio.sleep(0.1)
             return httpx.Response(405)
-        client = OpenRouterClient("secret", 0.01, transport=httpx.MockTransport(slow))
+        client = DecisionsClient("secret", 0.01, endpoint=ENDPOINT, transport=httpx.MockTransport(slow))
         try:
             self.assertEqual(await client.prepare(), "timeout")
         finally:
             await client.aclose()
-        client = OpenRouterClient("secret", 1,
+        client = DecisionsClient("secret", 1, endpoint=ENDPOINT,
             transport=httpx.MockTransport(lambda request: httpx.Response(405)))
         try:
             self.assertEqual(await client.prepare(), "ready")
@@ -261,18 +265,18 @@ class ClientTests(unittest.IsolatedAsyncioTestCase):
         def handler(request):
             calls.append(request)
             return httpx.Response(200, json=response())
-        client = OpenRouterClient("secret-test", 1, transport=httpx.MockTransport(handler))
-        result = await client.decide(build_payload(DEFAULT_MODEL, observation(), b"png", frames=0))
+        client = DecisionsClient("secret-test", 1, endpoint=ENDPOINT, transport=httpx.MockTransport(handler))
+        result = await client.decide(build_payload(MODEL_ID, observation(), b"png", frames=0))
         self.assertEqual(result.move, "high_jump_right")
-        self.assertEqual(str(calls[0].url), "https://openrouter.ai/api/alpha/decisions")
+        self.assertEqual(str(calls[0].url), ENDPOINT)
         self.assertEqual(calls[0].headers["authorization"], "Bearer secret-test")
 
     async def test_choice_is_validated_against_this_request(self):
         for offered in (False, True):
-            client = OpenRouterClient("secret", 1, transport=httpx.MockTransport(
+            client = DecisionsClient("secret", 1, endpoint=ENDPOINT, transport=httpx.MockTransport(
                 lambda request: httpx.Response(200, json=response("continue"))))
             context = {"execution_mode": "realtime", "current_move": "walk_right", "move_finished": not offered}
-            payload = build_payload(DEFAULT_MODEL, observation(), b"png", frames=1, control_context=context)
+            payload = build_payload(MODEL_ID, observation(), b"png", frames=1, control_context=context)
             try:
                 if offered:
                     self.assertEqual((await client.decide(payload)).move, "continue")
@@ -288,9 +292,9 @@ class ClientTests(unittest.IsolatedAsyncioTestCase):
             def handler(request):
                 calls.append(request)
                 return httpx.Response(status, json={"error": "secret-test"})
-            client = OpenRouterClient("secret-test", 1, transport=httpx.MockTransport(handler))
+            client = DecisionsClient("secret-test", 1, endpoint=ENDPOINT, transport=httpx.MockTransport(handler))
             with self.assertRaises(DecisionError) as caught:
-                await client.decide(build_payload(DEFAULT_MODEL, observation(), b"png", frames=0))
+                await client.decide(build_payload(MODEL_ID, observation(), b"png", frames=0))
             self.assertEqual(len(calls), 1)
             self.assertNotIn("secret-test", str(caught.exception))
             # Only server errors are worth a second request from the runner.
@@ -300,16 +304,16 @@ class ClientTests(unittest.IsolatedAsyncioTestCase):
         async def handler(request):
             await asyncio.sleep(5)
             return httpx.Response(200, json=response())
-        client = OpenRouterClient("secret", 0.02, transport=httpx.MockTransport(handler))
+        client = DecisionsClient("secret", 0.02, endpoint=ENDPOINT, transport=httpx.MockTransport(handler))
         with self.assertRaisesRegex(DecisionError, "timeout") as caught:
-            await client.decide(build_payload(DEFAULT_MODEL, observation(), b"png", frames=0))
+            await client.decide(build_payload(MODEL_ID, observation(), b"png", frames=0))
         self.assertTrue(caught.exception.transient)
 
     async def test_connection_reused_across_requests_and_closed(self):
-        client = OpenRouterClient("secret-test", 1, transport=httpx.MockTransport(lambda request: httpx.Response(200, json=response())))
-        await client.decide(build_payload(DEFAULT_MODEL, observation(), b"png", frames=0))
+        client = DecisionsClient("secret-test", 1, endpoint=ENDPOINT, transport=httpx.MockTransport(lambda request: httpx.Response(200, json=response())))
+        await client.decide(build_payload(MODEL_ID, observation(), b"png", frames=0))
         http = client._http
-        await client.decide(build_payload(DEFAULT_MODEL, observation(), b"png", frames=0))
+        await client.decide(build_payload(MODEL_ID, observation(), b"png", frames=0))
         self.assertIs(client._http, http)
         await client.aclose()
         self.assertIsNone(client._http)
@@ -320,7 +324,7 @@ class ClientTests(unittest.IsolatedAsyncioTestCase):
         def handler(request):
             calls.append(request)
             raise httpx.ConnectError("offline", request=request)
-        client = OpenRouterClient("secret-test", 1, transport=httpx.MockTransport(handler))
+        client = DecisionsClient("secret-test", 1, endpoint=ENDPOINT, transport=httpx.MockTransport(handler))
         await client.prepare(3)
         self.assertEqual([request.method for request in calls], ["HEAD"] * 3)
         self.assertNotIn("authorization", calls[0].headers)
@@ -333,9 +337,9 @@ class ClientTests(unittest.IsolatedAsyncioTestCase):
         def connection(request):
             raise httpx.ConnectError("secret", request=request)
         for handler in (connection, lambda request: httpx.Response(200, content="not-json")):
-            client = OpenRouterClient("secret", 1, transport=httpx.MockTransport(handler))
+            client = DecisionsClient("secret", 1, endpoint=ENDPOINT, transport=httpx.MockTransport(handler))
             with self.assertRaises(DecisionError) as caught:
-                await client.decide(build_payload(DEFAULT_MODEL, observation(), b"png", frames=0))
+                await client.decide(build_payload(MODEL_ID, observation(), b"png", frames=0))
             self.assertNotIn("secret", str(caught.exception))
 
 
@@ -369,7 +373,9 @@ class FakeGame:
         return StepResult(obs, count, count, done and (self.completed or self.death), done and not (self.completed or self.death))
 
 
-class FakeClient(Model):
+class FakeClient(ChoiceModel):
+    model_id = MODEL_ID
+
     def __init__(self, *, wait=False, error=False):
         self.calls = []
         self.started = threading.Event()
@@ -386,7 +392,7 @@ class FakeClient(Model):
                 await asyncio.sleep(0.005)
             if self.error:
                 raise DecisionError("simulated failure")
-            return Decision("walk_right", DEFAULT_MODEL)
+            return Decision("walk_right", MODEL_ID)
         except asyncio.CancelledError:
             self.cancelled.set()
             raise
@@ -398,7 +404,7 @@ class ModelRunnerTests(unittest.TestCase):
         class Client(FakeClient):
             async def decide(self, payload):
                 if payload:
-                    return Decision("walk_left", DEFAULT_MODEL)
+                    return Decision("walk_left", MODEL_ID)
                 self.started.set()
                 try:
                     await asyncio.sleep(60)
@@ -436,7 +442,7 @@ class ModelRunnerTests(unittest.TestCase):
                 try:
                     await asyncio.sleep(60)
                 except asyncio.CancelledError:
-                    return Decision("run_left", DEFAULT_MODEL, usage={"cost": 0.03})
+                    return Decision("run_left", MODEL_ID, usage={"cost": 0.03})
         client = Client()
         worker = DecisionWorker(client)
         try:
@@ -582,11 +588,11 @@ class ModelRunnerTests(unittest.TestCase):
 
     def invoke(self, config, game, client, directory, window=None):
         factory = lambda config: SessionLog(config, root=directory)
-        with patch("app.runner.openrouter_key", return_value="secret-test"), \
-             patch("app.runner.MarioGame", return_value=game), \
-             patch("app.models.load_model", return_value=client), \
-             patch("app.session.SessionLog", side_effect=factory), \
-             patch.dict("sys.modules", {"app.viewer": SimpleNamespace(GameWindow=lambda: window)}), \
+        with patch("supermairio.runtime.play.decisions_key", return_value="secret-test"), \
+             patch("supermairio.runtime.play.MarioGame", return_value=game), \
+             patch("supermairio.agent.load_model", return_value=client), \
+             patch("supermairio.runtime.session.SessionLog", side_effect=factory), \
+             patch.dict("sys.modules", {"supermairio.game.viewer": SimpleNamespace(GameWindow=lambda: window)}), \
              patch("sys.stdout", StringIO()):
             run(config)
 

@@ -1,0 +1,18 @@
+# Benchmark participants. Each one needs a unique `name` and either:
+#   model      = a model ID served by SUPERMAIRIO_ENDPOINT (with SUPERMAIRIO_API_KEY), or
+#   env_prefix = a prefix P that reads P_ENDPOINT, P_MODEL and the optional P_API_KEY.
+# Endpoints and model IDs are part of the published results; keys never are.
+
+[[participants]]
+name = "configured-model"
+env_prefix = "SUPERMAIRIO"
+
+# Another model on the same endpoint:
+# [[participants]]
+# name = "second-model"
+# model = "another-model-id"
+
+# A model on its own endpoint:
+# [[participants]]
+# name = "local-model"
+# env_prefix = "SUPERMAIRIO_LOCAL"

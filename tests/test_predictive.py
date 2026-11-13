@@ -11,16 +11,17 @@ from unittest.mock import patch
 
 import numpy as np
 
-from app.config import Config, DEFAULT_MODEL, parse_config
-from app.contracts import Action, Decision
-from app.control import HOP_FRAMES, PREDICTIVE_MOVES, RUN_UP_FRAMES, choice_frames, offered_choices
-from app.game import MarioGame
-from app.models._choice import ChoiceModel
-from app.models.decider import Model as Decider
-from app.models.jev import Model as Jev
-from app.openrouter import DecisionError, DecisionWorker, encode_png
-from app.predictive import run_predictive
-from app.session import SessionLog
+from helpers import ENDPOINT, MODEL_ENV, MODEL_ID
+
+from supermairio.config import Config, parse_config
+from supermairio.contracts import Action, Decision
+from supermairio.game.control import HOP_FRAMES, PREDICTIVE_MOVES, RUN_UP_FRAMES, choice_frames, offered_choices
+from supermairio.game.emulator import MarioGame
+from supermairio.agent import load_model
+from supermairio.agent.prompt import ChoiceModel
+from supermairio.agent.client import DecisionError, DecisionWorker, encode_png
+from supermairio.runtime.predictive import run_predictive
+from supermairio.runtime.session import SessionLog
 from test_decisions import observation
 
 
@@ -77,7 +78,7 @@ class ParallelRequestTests(unittest.TestCase):
                 Client.calls += 1
                 number = Client.calls
                 if number == 1:
-                    raise DecisionError("OpenRouter: errore HTTP 502", transient=True)
+                    raise DecisionError("Decisions API: errore HTTP 502", transient=True)
                 await asyncio.sleep(0.01 if number == 2 else 0.05)
                 return Decision(f"copy{number}", "test", usage={"cost": 0.1})
 
@@ -100,7 +101,7 @@ class ParallelRequestTests(unittest.TestCase):
             timeout = 5
 
             async def decide(self, payload):
-                raise DecisionError("OpenRouter: errore HTTP 503", transient=True)
+                raise DecisionError("Decisions API: errore HTTP 503", transient=True)
 
         worker = DecisionWorker(Client())
         try:
@@ -113,12 +114,12 @@ class ParallelRequestTests(unittest.TestCase):
 
 
 class PredictiveConfigTests(unittest.TestCase):
-    @patch.dict("app.config.os.environ", {"OPENROUTER_MODEL": DEFAULT_MODEL})
-    def test_defaults_are_the_winning_configuration(self):
+    @patch.dict("supermairio.config.os.environ", MODEL_ENV)
+    def test_cli_defaults_to_predictive_play(self):
         config = parse_config([])
         self.assertEqual((config.model, config.execution_mode, config.control_mode, config.choice_preview,
             config.parallel_requests, config.image, config.scene, config.game_fps),
-            ("perplexity/pplx-decider-v1.2", "predictive", "buttons", 30, 2, False, True, 60))
+            (MODEL_ID, "predictive", "buttons", 30, 2, False, True, 60))
         # Each other mode keeps its own defaults instead of being rejected for the predictive ones.
         for argv in (["--execution-mode", "paused"], ["--execution-mode", "realtime"],
                 ["--control-mode", "timed"], ["--control-mode", "moves"]):
@@ -130,6 +131,7 @@ class PredictiveConfigTests(unittest.TestCase):
         self.assertTrue(parse_config(["--image"]).image)
         self.assertTrue(parse_config(["--save-screenshots"]).image)
 
+    @patch.dict("supermairio.config.os.environ", MODEL_ENV)
     def test_predictive_options_and_their_requirements(self):
         config = parse_config(["--execution-mode", "predictive", "--choice-preview", "30",
             "--parallel-requests", "2", "--speculative-width", "3", "--decision-frames", "16"])
@@ -157,8 +159,8 @@ class PredictivePayloadTests(unittest.TestCase):
         obs = observation()
         context = predictive_context(preview={name: {"outcome": "alive", "frames": 43, "dx": 20, "dy": 0,
             "on_ground": True} for name in PREDICTIVE_MOVES}, preview_frames=43)
-        requests = [model("key", 10).build_request(obs, encode_png(obs), frames=0, control_context=context)
-            for model in (Decider, Jev)]
+        requests = [load_model(model, "key", 10, endpoint=ENDPOINT).build_request(obs, encode_png(obs), frames=0, control_context=context)
+            for model in ("test/first", "test/second")]
         first, second = (request.payload for request in requests)
         self.assertNotEqual(first["model"], second["model"])
         self.assertEqual(first["state"], second["state"])
@@ -170,7 +172,7 @@ class PredictivePayloadTests(unittest.TestCase):
             for name in PREDICTIVE_MOVES}
         preview["right_run"] = {"outcome": "dies", "frames": 21, "dx": 40, "dy": 0, "on_ground": False}
         context = predictive_context(preview=preview, preview_frames=43, frames_without_progress=120)
-        payload = Decider("key", 10).build_request(observation(), None, frames=0, control_context=context).payload
+        payload = load_model("test/first", "key", 10, endpoint=ENDPOINT).build_request(observation(), None, frames=0, control_context=context).payload
         question = payload["questions"]["next_action"]
         state = json.loads(payload["state"][0]["text"])
         self.assertEqual(set(question["criteria"]), set(PREDICTIVE_MOVES))
@@ -211,8 +213,8 @@ class PredictiveRunnerTests(unittest.TestCase):
         config = Config(headless=True, execution_mode="predictive", choice_preview=20, parallel_requests=2,
             image=False, max_episode_seconds=5, decision_frames=30)
         with tempfile.TemporaryDirectory() as directory:
-            with patch("app.models.load_model", return_value=ScriptedModel("key", 10)), \
-                    patch("app.session.SessionLog", side_effect=lambda config: SessionLog(config, root=directory)), \
+            with patch("supermairio.agent.load_model", return_value=ScriptedModel("key", 10, endpoint=ENDPOINT)), \
+                    patch("supermairio.runtime.session.SessionLog", side_effect=lambda config: SessionLog(config, root=directory)), \
                     patch("sys.stdout", StringIO()):
                 run_predictive(config, game_factory=MarioGame, key_provider=lambda: "key")
             (path,) = Path(directory).iterdir()

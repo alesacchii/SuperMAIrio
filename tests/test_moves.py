@@ -2,8 +2,8 @@
 
 import unittest
 
-from app.contracts import Action, has_jump, with_jump, without_jump
-from app.moves import (CHOICES, CONTINUE, HIGH_HOLD, LANDING_CAP, MOVES, SHORT_HOLD, Flight, MoveExecutor,
+from supermairio.contracts import Action, has_jump, with_jump, without_jump
+from supermairio.game.moves import (CHOICES, CONTINUE, HIGH_HOLD, LANDING_CAP, MOVES, SHORT_HOLD, Flight, MoveExecutor,
     jump_airtime, jump_reach)
 
 

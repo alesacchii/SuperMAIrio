@@ -10,14 +10,17 @@ import tempfile
 import unittest
 from unittest.mock import patch
 
-from app.config import Config, parse_config
-from app.contracts import Action, Decision, has_jump
-from app.metrics import ControlHistory, Metrics, distribution
-from app.moves import HIGH_HOLD, LANDING_CAP
-from app.models.gpt_luna import Model
-from app.openrouter import DecisionError, encode_png
-from app.runner import run
-from app.session import SessionLog
+from helpers import ENDPOINT, MODEL_ENV
+
+from supermairio.config import Config, parse_config
+from supermairio.contracts import Action, Decision, has_jump
+from supermairio.runtime.metrics import ControlHistory, Metrics, distribution
+from supermairio.game.moves import HIGH_HOLD, LANDING_CAP
+from supermairio.agent import load_model
+from supermairio.agent.prompt import ChoiceModel
+from supermairio.agent.client import DecisionError, encode_png
+from supermairio.runtime.play import run
+from supermairio.runtime.session import SessionLog
 from test_decisions import SCENE, FakeClient, FakeGame, observation
 
 
@@ -183,22 +186,24 @@ class RealtimeTests(unittest.TestCase):
         game = game or TimedGame(clock, config.max_frames)
         workers = []
         script = list(script)
-        class Client(Model):
+        class Client(ChoiceModel):
+            model_id = "test/clock"
+
             def build_request(self, *args, **kwargs):
                 clock.now += preparation_delay
                 return super().build_request(*args, **kwargs)
-        client = Client("secret-test", 10)
+        client = Client("secret-test", 10, endpoint=ENDPOINT)
         def worker_factory(client, connections=1, timeout=None):
             worker = Worker(clock, script, connections, setup_delay, setup_outcome, cancel_delay, cancel_returns)
             workers.append(worker)
             return worker
         with tempfile.TemporaryDirectory() as directory, ExitStack() as stack:
-            stack.enter_context(patch("app.model_runner.perf_counter", clock))
-            stack.enter_context(patch("app.model_runner.sleep", clock.sleep))
-            stack.enter_context(patch("app.model_runner.DecisionWorker", side_effect=worker_factory))
-            stack.enter_context(patch("app.runner.openrouter_key", return_value="secret-test"))
-            stack.enter_context(patch("app.models.load_model", return_value=client))
-            stack.enter_context(patch("app.runner.MarioGame", return_value=game))
+            stack.enter_context(patch("supermairio.runtime.loop.perf_counter", clock))
+            stack.enter_context(patch("supermairio.runtime.loop.sleep", clock.sleep))
+            stack.enter_context(patch("supermairio.runtime.loop.DecisionWorker", side_effect=worker_factory))
+            stack.enter_context(patch("supermairio.runtime.play.decisions_key", return_value="secret-test"))
+            stack.enter_context(patch("supermairio.agent.load_model", return_value=client))
+            stack.enter_context(patch("supermairio.runtime.play.MarioGame", return_value=game))
             timeline = []
             class Log(SessionLog):
                 def event(self, kind, **data):
@@ -210,12 +215,12 @@ class RealtimeTests(unittest.TestCase):
                     super().frame(**data)
                     timeline.append({"event": "frame", **data})
             factory = lambda config: Log(config, root=directory)
-            stack.enter_context(patch("app.session.SessionLog", side_effect=factory))
+            stack.enter_context(patch("supermairio.runtime.session.SessionLog", side_effect=factory))
             clock.output = StringIO()
             stack.enter_context(patch("sys.stdout", clock.output))
             if window is not None:
                 from types import SimpleNamespace
-                stack.enter_context(patch.dict("sys.modules", {"app.viewer": SimpleNamespace(GameWindow=lambda: window)}))
+                stack.enter_context(patch.dict("sys.modules", {"supermairio.game.viewer": SimpleNamespace(GameWindow=lambda: window)}))
             caught = None
             try:
                 run(config)
@@ -430,7 +435,7 @@ class RealtimeTests(unittest.TestCase):
                 self.assertEqual((summary["stale_responses"], summary["moves"]), (stale, 1 - stale))
 
     def test_transient_error_is_retried_once_with_current_observation(self):
-        transient = lambda: DecisionError("OpenRouter: errore HTTP 504", transient=True)
+        transient = lambda: DecisionError("Decisions API: errore HTTP 504", transient=True)
         summary, events, _, game, _, _, _, caught = self.invoke(
             script=[(0.05, transient()), (0.05, "walk_right"), (0.05, transient()), (0.05, "run_right")],
             config=Config(control_mode="moves", headless=True, max_frames=60))
@@ -443,7 +448,7 @@ class RealtimeTests(unittest.TestCase):
         self.assertEqual([start["move"] for start in self.kinds(events, "move_start")], ["walk_right", "run_right"])
 
     def test_second_consecutive_transient_error_stops(self):
-        transient = lambda: DecisionError("OpenRouter: timeout dopo 10 secondi", transient=True)
+        transient = lambda: DecisionError("Decisions API: timeout dopo 10 secondi", transient=True)
         summary, events, _, _, _, _, _, caught = self.invoke(
             script=[(0.05, transient()), (0.05, transient())], config=Config(control_mode="moves", headless=True, max_frames=60))
         self.assertIsInstance(caught, DecisionError)
@@ -476,7 +481,7 @@ class RealtimeTests(unittest.TestCase):
                     script=[(delay, "walk_right")] * 4, config=Config(control_mode="moves", headless=True, max_frames=150))
                 self.assertIsNone(caught)
                 self.assertEqual(summary["episodes"][0]["slow_provider"], slow)
-                self.assertEqual("provider lento" in clock.output.getvalue(), slow)
+                self.assertEqual("slow provider" in clock.output.getvalue(), slow)
 
     def test_error_stops_once_without_retry(self):
         summary, events, workers, game, _, _, _, caught = self.invoke(
@@ -501,7 +506,7 @@ class RealtimeTests(unittest.TestCase):
             script=[(0.05, "walk_right")], config=Config(control_mode="moves", headless=True, max_frames=10, save_screenshots=True))
         self.assertIsNone(caught)
         self.assertEqual((summary["results_version"], persisted["results_version"]), (6, 6))
-        self.assertEqual(persisted["protocol"], "openrouter-choice-scene-v5")
+        self.assertEqual(persisted["protocol"], "choice-scene-v5")
         self.assertEqual(persisted["prompt_revision"], 5)
         self.assertTrue(persisted["scene"])
         self.assertEqual(persisted["moves"]["high_jump_right"][0],
@@ -533,9 +538,9 @@ class RealtimeTests(unittest.TestCase):
     def test_real_backend_with_simulated_model(self):
         with tempfile.TemporaryDirectory() as directory:
             factory = lambda config: SessionLog(config, root=directory)
-            with patch("app.runner.openrouter_key", return_value="test-key"), \
-                 patch("app.models.load_model", return_value=FakeClient()), \
-                 patch("app.session.SessionLog", side_effect=factory), patch("sys.stdout", StringIO()):
+            with patch("supermairio.runtime.play.decisions_key", return_value="test-key"), \
+                 patch("supermairio.agent.load_model", return_value=FakeClient()), \
+                 patch("supermairio.runtime.session.SessionLog", side_effect=factory), patch("sys.stdout", StringIO()):
                 run(Config(control_mode="moves", headless=True, max_frames=12))
             summary = json.loads(next(Path(directory).glob("*/summary.json")).read_text())
             self.assertEqual(summary["frames"], 12)
@@ -545,16 +550,17 @@ class RealtimeTests(unittest.TestCase):
             self.assertIsNone(summary["known_cost"])
 
     def test_real_backend_jumps_land_with_300ms_model(self):
-        class DelayedClient(Model):
+        class DelayedClient(ChoiceModel):
+            model_id = "test/delayed"
             moves = iter(["run_right", "high_jump_right"] * 20)
             async def decide(self, payload):
                 await asyncio.sleep(0.3)
                 return Decision(next(self.moves), "test/delayed")
         with tempfile.TemporaryDirectory() as directory:
             factory = lambda config: SessionLog(config, root=directory)
-            with patch("app.runner.openrouter_key", return_value="test-key"), \
-                 patch("app.models.load_model", return_value=DelayedClient("test-key", 10)), \
-                 patch("app.session.SessionLog", side_effect=factory), patch("sys.stdout", StringIO()):
+            with patch("supermairio.runtime.play.decisions_key", return_value="test-key"), \
+                 patch("supermairio.agent.load_model", return_value=DelayedClient("test-key", 10, endpoint=ENDPOINT)), \
+                 patch("supermairio.runtime.session.SessionLog", side_effect=factory), patch("sys.stdout", StringIO()):
                 run(Config(control_mode="moves", headless=True, max_frames=150))
             session = next(Path(directory).iterdir())
             summary = json.loads((session / "summary.json").read_text())
@@ -737,7 +743,7 @@ class MeasurementTests(unittest.TestCase):
             control.record(index, "run_right", 16, 40, 40)
         context.update(control.context("realtime"), move_finished=True,
             move_remaining_frames=0, tail_action="noop")
-        payload = Model("key", 10).build_request(observation(), encode_png(observation()), frames=120,
+        payload = load_model("test/model", "key", 10, endpoint=ENDPOINT).build_request(observation(), encode_png(observation()), frames=120,
             previous_move="run_right", control_context=context).payload
         instructions = payload["questions"]["next_action"]["instructions"]
         self.assertIn("30 FPS", instructions)
@@ -754,13 +760,13 @@ class MeasurementTests(unittest.TestCase):
         self.assertNotIn("continue", payload["questions"]["next_action"]["criteria"])
 
     def test_adapter_paused_prompt(self):
-        payload = Model("key", 10).build_request(observation(), encode_png(observation()), frames=0).payload
+        payload = load_model("test/model", "key", 10, endpoint=ENDPOINT).build_request(observation(), encode_png(observation()), frames=0).payload
         instructions = payload["questions"]["next_action"]["instructions"]
         self.assertIn("paused while you decide", instructions)
         self.assertNotIn("continue", payload["questions"]["next_action"]["criteria"])
         self.assertNotIn("FPS", instructions)
 
-    @patch.dict("app.config.os.environ", {"OPENROUTER_MODEL": Config().model})
+    @patch.dict("supermairio.config.os.environ", MODEL_ENV)
     def test_cli_defaults_and_removed_options(self):
         config = parse_config([])
         self.assertEqual((config.execution_mode, config.max_decision_frames, config.game_fps), ("predictive", 120, 60))

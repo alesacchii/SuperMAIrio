@@ -5,12 +5,14 @@ from unittest.mock import patch
 
 import numpy as np
 
-from app.config import (BEST_CHOICE_PREVIEW, BEST_EXECUTION_MODE, BEST_PARALLEL_REQUESTS, Config,
+from helpers import ENDPOINT, MODEL_ENV, MODEL_ID
+
+from supermairio.config import (BEST_CHOICE_PREVIEW, BEST_EXECUTION_MODE, BEST_PARALLEL_REQUESTS, Config,
     parse_config)
-from app.contracts import Action, BUTTONS, keyboard_action
-from app.game import MarioGame
-from app.moves import MOVES
-from app.runner import DEMO_LOOP, DEMO_SEQUENCE, demo_moves
+from supermairio.contracts import Action, BUTTONS, keyboard_action
+from supermairio.game.emulator import MarioGame
+from supermairio.game.moves import MOVES
+from supermairio.runtime.play import DEMO_LOOP, DEMO_SEQUENCE, demo_moves
 
 
 class FakeEnvironment:
@@ -48,7 +50,7 @@ class GameContractTests(unittest.TestCase):
             ["right", "B"], ["right", "A", "B"],
         ]
         raw = FakeEnvironment()
-        with patch("app.game.gym.make", return_value=raw) as make, patch("app.game.JoypadSpace", return_value=raw) as wrapper:
+        with patch("supermairio.game.emulator.gym.make", return_value=raw) as make, patch("supermairio.game.emulator.JoypadSpace", return_value=raw) as wrapper:
             game = MarioGame(17)
             wrapper.assert_called_once_with(raw, expected)
             self.assertEqual(make.call_args.kwargs["max_episode_steps"], 17)
@@ -129,9 +131,9 @@ class GameContractTests(unittest.TestCase):
         self.assertEqual({move.name for move in sequence[:len(DEMO_SEQUENCE) + len(DEMO_LOOP)]}, set(MOVES))
         self.assertEqual(sequence, [next(second) for _ in range(count)])
 
-    @patch.dict("app.config.os.environ", {"OPENROUTER_MODEL": Config().model})
+    @patch.dict("supermairio.config.os.environ", MODEL_ENV)
     def test_configuration(self):
-        self.assertEqual(parse_config([]), replace(Config(), execution_mode=BEST_EXECUTION_MODE,
+        self.assertEqual(parse_config([]), replace(Config(), model=MODEL_ID, endpoint=ENDPOINT, execution_mode=BEST_EXECUTION_MODE,
             choice_preview=BEST_CHOICE_PREVIEW, parallel_requests=BEST_PARALLEL_REQUESTS, image=False))
         for args in (["--mode", "manual", "--headless"], ["--episodes", "0"],
                      ["--max-frames", "-2"], ["--game-fps", "1.5"]):

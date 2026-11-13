@@ -8,9 +8,9 @@ import json
 from pathlib import Path
 import unittest
 
-from app.contracts import Action
-from app.game import MarioGame
-from app.moves import MOVES, MoveExecutor
+from supermairio.contracts import Action
+from supermairio.game.emulator import MarioGame
+from supermairio.game.moves import MOVES, MoveExecutor
 
 
 REPLAYS = json.loads(Path(__file__).with_name("fixtures").joinpath("jump_replays.json").read_text())
